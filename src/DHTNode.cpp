@@ -1,27 +1,27 @@
 /**
- * Homie Node for SHT31 Temperature and Humidity  Sensor
+ * Homie Node for DHT Temperature and Humidity  Sensor
  * 
  */
-#include "Sht31Node.hpp"
+#include "DHTNode.hpp"
 
-Sht31Node::Sht31Node(const uint8_t sdaPin, const uint8_t sclPin, const char *id, const char *name, const char *nType, const int measurementInterval = MEASUREMENT_INTERVAL)
+DHTNode::DHTNode(const uint8_t dhtPin, DHTesp::DHT_MODEL_t dhtModel, const char *id, const char *name, const char *nType, const int measurementInterval = MEASUREMENT_INTERVAL)
     : HomieNode(id, name, nType)
 {
   _measurementInterval = (measurementInterval > MIN_INTERVAL) ? measurementInterval : MIN_INTERVAL;
   _lastMeasurement     = 0;
 
   // Start up the library
-  Wire.begin(sdaPin, sclPin);
-  sensor = new DFRobot_SHT3x(&Wire, _sensorAddress);
-  sensor->begin();
+  sensor = new DHTesp();
+  sensor->setup(dhtPin, dhtModel);
 }
 
   /**
     * Called by Homie when Homie.setup() is called; Once!
   */
-  void Sht31Node::setup() {
-    Homie.getLogger() << cIndent << F("Sensor SerialNumber: ") << sensor->readSerialNumber() << endl;
-    Homie.getLogger() << cIndent << F("Sensor Heater Status: ") << (sensor->softReset() ? "Heater Off" : "Heater On") << endl;
+  void DHTNode::setup() {
+    Homie.getLogger() << cIndent << F("Sensor Model:  ") << sensor->getModel() << endl;
+    Homie.getLogger() << cIndent << F("Sensor Status: ") << sensor->getStatusString() << endl;
+    
 
     advertise(cHumidity)
         .setName(cHumidityName)
@@ -37,7 +37,7 @@ Sht31Node::Sht31Node(const uint8_t sdaPin, const uint8_t sclPin, const char *id,
   /**
    * Called by Homie when homie is connected and in run mode
   */
-  void Sht31Node::loop() {
+  void DHTNode::loop() {
     if (!(millis() - _lastMeasurement >= _measurementInterval * 1000UL || _lastMeasurement == 0)) {
       return;
     }
@@ -45,8 +45,10 @@ Sht31Node::Sht31Node(const uint8_t sdaPin, const uint8_t sclPin, const char *id,
 
     Homie.getLogger() << F("〽 Sending Temperature: ") << getId() << endl;
     
-    _sensorResults = sensor->readTemperatureAndHumidity(sensor->eRepeatability_High);
-    if (_sensorResults.ERR == ERR_OK) {
+    _sensorResults = sensor->getTempAndHumidity();
+    _sensorStatus  = sensor->getStatus();
+    if (_sensorStatus == DHTesp::ERROR_NONE)
+    {
       Homie.getLogger() << cIndent
                         << F("Temperature=")
                         << getTemperatureF()
@@ -60,8 +62,8 @@ Sht31Node::Sht31Node(const uint8_t sdaPin, const uint8_t sclPin, const char *id,
     {
       Homie.getLogger() << cIndent
                         << F("✖ Error reading sensor: ")
-                        << _sensorResults.ERR
-                        << ", value (F) read=" << _sensorResults.TemperatureF
+                        << sensor->getStatusString()
+                        << ", value (F) read=" << _sensorResults.temperature
                         << endl;
     }
   }

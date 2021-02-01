@@ -1,16 +1,16 @@
 /**
  * @file main.cpp
  * @author James Scott, Jr.  aka(Skoona) (skoona@gmail.com)
- * @brief HomieNode featuring an SHT31 Temperature sensor.
+ * @brief HomieNode featuring an DHT (11/22) Temperature sensor.
  * @version 1.0.0
- * @date 2021-01-29
+ * @date 2021-01-31
  * 
  * @copyright Copyright (c) 2021
  * 
  */
 
 #include <Arduino.h>
-#include "Sht31Node.hpp"
+#include "DHTNode.hpp"
 #include "RCWLNode.hpp"
 
 #ifdef ESP8266
@@ -22,14 +22,14 @@ extern "C"
 
 /*
  * SKN_NODE_ID becomes the base name when ranges are used
- * ex: sknSensors/deviceName/SHT31_0/temperature -> 72.3 degress
+ * ex: sknSensors/deviceName/DHT_0/temperature -> 72.3 degress
  * Note: HomieNode(...range,lower,upper) manages this array suffix change; i.e no more name fixups
 */
-#define SKN_MOD_NAME "Environment-SHT31-RCWL0516"
+#define SKN_MOD_NAME "Environment-DHT-RCWL0516"
 #define SKN_MOD_VERSION "1.0.4"
 #define SKN_MOD_BRAND "SknSensors"
 
-#define SKN_TNODE_TITLE "SHT31 Temperature and Humidity Sensor"
+#define SKN_TNODE_TITLE "DHT Temperature and Humidity Sensor"
 #define SKN_MNODE_TITLE "RCWL-0516 Motion Sensor"
 
 #define SKN_TNODE_TYPE "sensor"
@@ -38,16 +38,17 @@ extern "C"
 #define SKN_TNODE_ID "Ambient"    
 #define SKN_MNODE_ID "Presence" 
 
-// Select SDA and SCL pins for I2C communication and Motion
+// Select pins for Temperature and Motion
 #define PIN_RCWL D5 // 14
-#define PIN_SCL  D6 // 12
-#define PIN_SDA  D7 // 13
+#define PIN_DHT  D6 // 12
+#define DHT_TYPE DHTesp::AUTO_DETECT // DHTesp::DHT22
+
 #define SENSOR_READ_INTERVAL 300
 
 HomieSetting<long> sensorsIntervalSetting("sensorInterval", "The interval in seconds to wait between sending commands.");
 HomieSetting<long> motionIntervalSetting("motionHoldInterval", "The interval in seconds to hold motion detection.");
 
-Sht31Node temperatureMonitor(PIN_SDA, PIN_SCL, SKN_TNODE_ID, SKN_TNODE_TITLE, SKN_TNODE_TYPE, SENSOR_READ_INTERVAL);
+DHTNode temperatureMonitor(PIN_DHT, DHT_TYPE, SKN_TNODE_ID, SKN_TNODE_TITLE, SKN_TNODE_TYPE, SENSOR_READ_INTERVAL);
 RCWLNode  motionMonitor(PIN_RCWL, SKN_MNODE_ID, SKN_MNODE_TITLE, SKN_MNODE_TYPE, SENSOR_READ_INTERVAL);
 
 bool broadcastHandler(const String &level, const String &value)

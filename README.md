@@ -4,7 +4,7 @@
 </a>
 
 HomieNode V3 featuring:
-- SHT31 Temperature Class, using HomeNode, HomieRange, and Manual Assignment methods.
+- DHT Temperature Class, using HomeNode with auto detect of dht11/22.
 - RCWL-0516 Doppler Radar Microwave Motion Class, using HomieNode.
 
 ### Homie Config
@@ -56,7 +56,7 @@ sknSensors/LocationName/$implementation/config {"name":"Environment Monitor","de
 sknSensors/LocationName/$implementation/version 3.0.0
 sknSensors/LocationName/$implementation/ota/enabled true
 
-sknSensors/LocationName/ambient/$name SHT31 Temperature and Humidity Sensor
+sknSensors/LocationName/ambient/$name DHT Temperature and Humidity Sensor
 sknSensors/LocationName/ambient/$type sensor
 sknSensors/LocationName/ambient/$properties humidity,temperature
 sknSensors/LocationName/ambient/humidity/$name Humidity
