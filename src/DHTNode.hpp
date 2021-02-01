@@ -22,11 +22,11 @@ public:
 
   void          setMeasurementInterval(unsigned long interval) { _measurementInterval = interval; }
   unsigned long getMeasurementInterval() const { return _measurementInterval; }
-  float getTemperatureF() const { return (_sensorResults.temperature); }
+  float getTemperatureF() const { return DHTesp::toFahrenheit( _sensorResults.temperature ); }
   float getHumidity() const { return _sensorResults.humidity; }
+  String getModelName();
 
-protected:
-  void setup() override;
+protected : void setup() override;
   void loop() override;
   
 private:

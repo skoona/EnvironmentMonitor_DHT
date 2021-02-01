@@ -4,7 +4,7 @@
 </a>
 
 HomieNode V3 featuring:
-- DHT Temperature Class, using HomeNode with auto detect of dht11/22.
+- DHT Temperature Class, using HomeNode with auto detect sensor of DHT11, DHT22, AM2302, RHT03.
 - RCWL-0516 Doppler Radar Microwave Motion Class, using HomieNode.
 
 ### Homie Config
@@ -39,45 +39,44 @@ HomieNode V3 featuring:
 
 ### Home MQTT Log
 ```
-sknSensors/LocationName/$state lost
-sknSensors/LocationName/$state init
-sknSensors/LocationName/$homie 3.0.1
-sknSensors/LocationName/$name Environment Monitor
-sknSensors/LocationName/$mac 38:2B:78:03:93:CB
-sknSensors/LocationName/$localip 10.100.1.165
-sknSensors/LocationName/$nodes ambient,presence
-sknSensors/LocationName/$stats uptime
-sknSensors/LocationName/$stats/interval 905
-sknSensors/LocationName/$fw/name Environment-SHT31-RCWL0516
-sknSensors/LocationName/$fw/version 1.0.3
-sknSensors/LocationName/$fw/checksum dfcfb06b8338776bf6222441831af108
-sknSensors/LocationName/$implementation esp8266
-sknSensors/LocationName/$implementation/config {"name":"Environment Monitor","device_id":"LocationName","device_stats_interval":900,"wifi":{"ssid":"SFNSS1-24G"},"mqtt":{"host":"openhab.skoona.net","port":1883,"base_topic":"sknSensors/","auth":true},"ota":{"enabled":true},"settings":{"sensorInterval":900,"motionHoldInterval":60}}
-sknSensors/LocationName/$implementation/version 3.0.0
-sknSensors/LocationName/$implementation/ota/enabled true
+sknSensors/HomeOffice/$state lost
+sknSensors/HomeOffice/$state init
+sknSensors/HomeOffice/$homie 3.0.1
+sknSensors/HomeOffice/$name Home Office
+sknSensors/HomeOffice/$mac 84:F3:EB:B7:55:D5
+sknSensors/HomeOffice/$localip 10.100.1.161
+sknSensors/HomeOffice/$nodes Ambient,Presence
+sknSensors/HomeOffice/$stats uptime
+sknSensors/HomeOffice/$stats/interval 905
+sknSensors/HomeOffice/$fw/name Environment-DHT-RCWL0516
+sknSensors/HomeOffice/$fw/version 1.0.0
+sknSensors/HomeOffice/$fw/checksum 66625e09720864223f16f3dec17b570d
+sknSensors/HomeOffice/$implementation esp8266
+sknSensors/HomeOffice/$implementation/config {"name":"Home Office","device_id":"HomeOffice","device_stats_interval":900,"wifi":{"ssid":"SFNSS1-24G"},"mqtt":{"host":"openhab.skoona.net","port":1883,"base_topic":"sknSensors/","auth":true},"ota":{"enabled":true},"settings":{"sensorsInterval":900}}
+sknSensors/HomeOffice/$implementation/version 3.0.0
+sknSensors/HomeOffice/$implementation/ota/enabled true
+sknSensors/HomeOffice/Ambient/$name DHT Temperature and Humidity Sensor
+sknSensors/HomeOffice/Ambient/$type sensor
+sknSensors/HomeOffice/Ambient/$properties humidity,temperature
+sknSensors/HomeOffice/Ambient/humidity/$name Humidity
+sknSensors/HomeOffice/Ambient/humidity/$datatype float
+sknSensors/HomeOffice/Ambient/humidity/$unit %rH
+sknSensors/HomeOffice/Ambient/temperature/$name Temperature
+sknSensors/HomeOffice/Ambient/temperature/$datatype float
+sknSensors/HomeOffice/Ambient/temperature/$unit °F
+sknSensors/HomeOffice/Presence/$name RCWL-0516 Motion Sensor
+sknSensors/HomeOffice/Presence/$type sensor
+sknSensors/HomeOffice/Presence/$properties motion
+sknSensors/HomeOffice/Presence/motion/$name Motion
+sknSensors/HomeOffice/Presence/motion/$datatype enum
+sknSensors/HomeOffice/Presence/motion/$format OPEN,CLOSED
+sknSensors/HomeOffice/$state ready
+sknSensors/HomeOffice/Ambient/temperature 77.18
+sknSensors/HomeOffice/Ambient/humidity 29.00
+sknSensors/HomeOffice/$stats/interval 905
+sknSensors/HomeOffice/$stats/signal 64
+sknSensors/HomeOffice/$stats/uptime 6
 
-sknSensors/LocationName/ambient/$name DHT Temperature and Humidity Sensor
-sknSensors/LocationName/ambient/$type sensor
-sknSensors/LocationName/ambient/$properties humidity,temperature
-sknSensors/LocationName/ambient/humidity/$name Humidity
-sknSensors/LocationName/ambient/humidity/$datatype float
-sknSensors/LocationName/ambient/humidity/$unit %rH
-sknSensors/LocationName/ambient/temperature/$name Temperature
-sknSensors/LocationName/ambient/temperature/$datatype float
-sknSensors/LocationName/ambient/temperature/$unit °F
 
-sknSensors/LocationName/presence/$name RCWL-0516 Motion Sensor
-sknSensors/LocationName/presence/$type sensor
-sknSensors/LocationName/presence/$properties motion
-sknSensors/LocationName/presence/motion/$name Motion
-sknSensors/LocationName/presence/motion/$datatype enum
-sknSensors/LocationName/presence/motion/$format OPEN,ClOSED
 
-sknSensors/LocationName/$state ready
-sknSensors/LocationName/ambient/temperature 56.98
-sknSensors/LocationName/ambient/humidity 30.18
-sknSensors/LocationName/presence/motion Open
-sknSensors/LocationName/$stats/interval 905
-sknSensors/LocationName/$stats/signal 70
-sknSensors/LocationName/$stats/uptime 5
 ```

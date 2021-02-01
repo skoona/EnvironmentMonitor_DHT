@@ -15,20 +15,51 @@ DHTNode::DHTNode(const uint8_t dhtPin, DHTesp::DHT_MODEL_t dhtModel, const char 
   sensor->setup(dhtPin, dhtModel);
 }
 
-  /**
+String DHTNode::getModelName() {
+  String res;
+
+  switch (sensor->getModel()) {
+    case DHTesp::DHT_MODEL_t::DHT11:
+      res = "DHT11";
+      break;
+    case DHTesp::DHT_MODEL_t::DHT22:
+      res = "DHT22";
+      break;
+    case DHTesp::DHT_MODEL_t::AM2302:
+      res = "AM2302";
+      break;
+    case DHTesp::DHT_MODEL_t::RHT03:
+      res = "RHT03";
+      break;
+    case DHTesp::DHT_MODEL_t::AUTO_DETECT:
+      res = "AUTO_DETECT";
+      break;
+    default:
+        break;
+  }
+  return res;
+}
+
+/**
     * Called by Homie when Homie.setup() is called; Once!
   */
-  void DHTNode::setup() {
-    Homie.getLogger() << cIndent << F("Sensor Model:  ") << sensor->getModel() << endl;
-    Homie.getLogger() << cIndent << F("Sensor Status: ") << sensor->getStatusString() << endl;
-    
+void DHTNode::setup()
+{
+  Homie.getLogger() << cIndent 
+                    << F("Sensor Model:  ") 
+                    << getModelName() 
+                    << endl;
+  Homie.getLogger() << cIndent 
+                    << F("Sensor Status: ") 
+                    << sensor->getStatusString() 
+                    << endl;
 
-    advertise(cHumidity)
-        .setName(cHumidityName)
-        .setDatatype("float")
-        .setUnit(cHumidityUnit);
+  advertise(cHumidity)
+      .setName(cHumidityName)
+      .setDatatype("float")
+      .setUnit(cHumidityUnit);
 
-    advertise(cTemperature)
+  advertise(cTemperature)
       .setName(cTemperatureName)
       .setDatatype("float")
       .setUnit(cTemperatureUnit);

@@ -26,11 +26,11 @@ extern "C"
  * Note: HomieNode(...range,lower,upper) manages this array suffix change; i.e no more name fixups
 */
 #define SKN_MOD_NAME "Environment-DHT-RCWL0516"
-#define SKN_MOD_VERSION "1.0.4"
+#define SKN_MOD_VERSION "1.0.0"
 #define SKN_MOD_BRAND "SknSensors"
 
-#define SKN_TNODE_TITLE "DHT Temperature and Humidity Sensor"
-#define SKN_MNODE_TITLE "RCWL-0516 Motion Sensor"
+#define SKN_TNODE_TITLE "Temperature and Humidity Sensor"
+#define SKN_MNODE_TITLE "Motion Sensor"
 
 #define SKN_TNODE_TYPE "sensor"
 #define SKN_MNODE_TYPE "sensor"
@@ -39,8 +39,8 @@ extern "C"
 #define SKN_MNODE_ID "Presence" 
 
 // Select pins for Temperature and Motion
-#define PIN_RCWL D5 // 14
-#define PIN_DHT  D6 // 12
+#define PIN_DHT  D6                  // 12
+#define PIN_RCWL D5                  // 14
 #define DHT_TYPE DHTesp::AUTO_DETECT // DHTesp::DHT22
 
 #define SENSOR_READ_INTERVAL 300
