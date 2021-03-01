@@ -9,11 +9,13 @@ DHTNode::DHTNode(const uint8_t dhtPin, DHTesp::DHT_MODEL_t dhtModel, const char 
 {
   _measurementInterval = (measurementInterval > MIN_INTERVAL) ? measurementInterval : MIN_INTERVAL;
   _lastMeasurement     = 0;
+  _dhtPin = dhtPin;
+  _model = dhtModel;
 
   // Start up the library
   sensor = new DHTesp();
-  sensor->setup(dhtPin, dhtModel);
 }
+
 
 String DHTNode::getModelName() {
   String res;
@@ -45,6 +47,8 @@ String DHTNode::getModelName() {
   */
 void DHTNode::setup()
 {
+  sensor->setup(_dhtPin, _model);
+
   Homie.getLogger() << cIndent 
                     << F("Sensor Model:  ") 
                     << getModelName() 
@@ -84,10 +88,10 @@ void DHTNode::setup()
                         << F("Temperature=")
                         << getTemperatureF()
                         << F(", Humidity=")
-                        << getHumidity()
+                        << getTHumidity()
                         << endl;
       setProperty(cTemperature).send(String( getTemperatureF() ));
-      setProperty(cHumidity).send(String( getHumidity() ));
+      setProperty(cHumidity).send(String( getTHumidity() ));
     }
     else
     {

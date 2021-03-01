@@ -12,7 +12,9 @@ RCWLNode::RCWLNode(const uint8_t rcwlPin, const char *id, const char *name, cons
   _motion = false;
 
   // Start up the library
-  pinMode(_motionPin, INPUT); 
+  pinMode(_motionPin, INPUT);
+  debouncer.attach(_motionPin);
+  debouncer.interval(50);
 }
 
 /**
@@ -25,30 +27,34 @@ void RCWLNode::setup() {
   advertise(cProperty)
       .setName(cPropertyName)
       .setDatatype(cPropertyDataType)
-      .setFormat(cPropertyFormat);
-      // .setUnit(cPropertyUnit);
+      .setFormat(cPropertyFormat)
+      .setUnit(cPropertyUnit);
 }
 
 /**
  * Called by Homie when homie is connected and in run mode
 */
 void RCWLNode::loop() {
-  _isrTrigger = digitalRead(_motionPin);
+  if (debouncer.update()) {
 
-  if (_isrTrigger == HIGH) {
-    _isrTriggeredAt = millis(); // push hold time
+    _isrTrigger = debouncer.rose();
 
-    if (!_motion)
+    if (_isrTrigger)
     {
-      _motion = true;
+      _isrTriggeredAt = millis(); // push hold time
 
-      Homie.getLogger() << F("〽 Sending Presence: ") << endl;
+      if (!_motion)
+      {
+        _motion = true;
 
-      Homie.getLogger() << cIndent
-                        << F("✖ Motion Detected: ON ")
-                        << endl;
+        Homie.getLogger() << F("〽 Sending Presence: ") << endl;
 
-      setProperty(cProperty).setRetained(true).send("CLOSED");
+        Homie.getLogger() << cIndent
+                          << F("✖ Motion Detected: ON ")
+                          << endl;
+
+        setProperty(cProperty).setRetained(true).send("CLOSED");
+      }
     }
   }
 

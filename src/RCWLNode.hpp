@@ -44,5 +44,5 @@ private:
   volatile bool _motion = false;
   volatile byte _isrTrigger = LOW;
   volatile unsigned long _isrTriggeredAt = 0L;
- 
+  Bounce debouncer = Bounce();
 };

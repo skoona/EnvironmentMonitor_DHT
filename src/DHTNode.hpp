@@ -23,8 +23,9 @@ public:
   void          setMeasurementInterval(unsigned long interval) { _measurementInterval = interval; }
   unsigned long getMeasurementInterval() const { return _measurementInterval; }
   float getTemperatureF() const { return DHTesp::toFahrenheit( _sensorResults.temperature ); }
-  float getHumidity() const { return _sensorResults.humidity; }
+  float getTHumidity() const { return _sensorResults.humidity; }
   String getModelName();
+  void setModel(DHTesp::DHT_MODEL_t model) {_model = model;}
 
 protected : void setup() override;
   void loop() override;
@@ -50,8 +51,10 @@ private:
 
   unsigned long _measurementInterval;
   unsigned long _lastMeasurement;
+  uint8_t _dhtPin = 0;
 
   DHTesp *sensor;
   TempAndHumidity _sensorResults;
   DHTesp::DHT_ERROR_t _sensorStatus;
+  DHTesp::DHT_MODEL_t _model = (DHTesp::DHT_MODEL_t)2;
 };
