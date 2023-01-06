@@ -11,7 +11,7 @@
 
 #include <Arduino.h>
 #include "DHTNode.hpp"
-#include "RCWLNode.hpp"
+#include "LD2410Client.hpp"
 #include "MetricsNode.hpp"
 
 #ifdef ESP8266
@@ -27,25 +27,27 @@ extern "C"
  * Note: HomieNode(...range,lower,upper) manages this array suffix change; i.e no more name fixups
 */
 #define SKN_MOD_NAME "Monitor-DHT-RCWL-Metrics"
-#define SKN_MOD_VERSION "2.0.1"
+#define SKN_MOD_VERSION "2.0.2"
 #define SKN_MOD_BRAND "SknSensors"
 
 #define SKN_TNODE_TITLE "Temperature and Humidity Sensor"
-#define SKN_MNODE_TITLE "Motion Sensor"
+#define SKN_MNODE_TITLE "Occupancy and Motion Sensor"
 
-#define SKN_TNODE_TYPE "sensor"
-#define SKN_MNODE_TYPE "contact"
+#define SKN_TNODE_TYPE "Sensor"
+#define SKN_MNODE_TYPE "Sensor"
 
 #define SKN_TNODE_ID "Ambient"    
-#define SKN_MNODE_ID "Presence"
+#define SKN_MNODE_ID "Occupancy"
 
 #define SKN_DNODE_TITLE "Device Info"
-#define SKN_DNODE_TYPE "sensor"
-#define SKN_DNODE_ID "hardware"
+#define SKN_DNODE_TYPE "Sensor"
+#define SKN_DNODE_ID "Hrdware"
 
 // Select pins for Temperature and Motion
 #define PIN_DHT  D6                  // 12
-#define PIN_RCWL D5                  // 14
+#define LD_IO D5                  // 14
+#define LD_RX D7 // 13
+#define LD_TX D8 // 15
 #define DHT_TYPE DHTesp::DHT_MODEL_t::DHT22 // DHTesp::DHT22
 
 #define SENSOR_READ_INTERVAL 300
@@ -53,34 +55,22 @@ extern "C"
 ADC_MODE(ADC_VCC); //vcc read in MetricsNode
 
 HomieSetting<long> sensorsIntervalSetting("sensorInterval", "The interval in seconds to wait between sending commands.");
-HomieSetting<long> motionIntervalSetting("motionHoldInterval", "The interval in seconds to hold motion detection.");
 HomieSetting<long> broadcastInterval("broadcastInterval", "how frequently to send pin values.");
 HomieSetting<long> dhtType("dhtType", "Type os Humidty Sensor where; DHTesp::DHT_MODEL_t::DHT11 = 1. DHTesp::DHT_MODEL_t::DHT22 = 2");
 
 DHTNode temperatureMonitor(PIN_DHT, DHT_TYPE, SKN_TNODE_ID, SKN_TNODE_TITLE, SKN_TNODE_TYPE, SENSOR_READ_INTERVAL);
-RCWLNode  motionMonitor(PIN_RCWL, SKN_MNODE_ID, SKN_MNODE_TITLE, SKN_MNODE_TYPE, SENSOR_READ_INTERVAL);
+LD2410Client  motionMonitor(SKN_MNODE_ID, SKN_MNODE_TITLE, SKN_MNODE_TYPE, LD_RX, LD_TX, LD_IO);
 MetricsNode metricsNode(SKN_DNODE_ID, SKN_DNODE_TITLE, SKN_DNODE_TYPE);
-
-bool broadcastHandler(const String &level, const String &value)
-{
-  Homie.getLogger() << "Received broadcast level " << level << ": " << value << endl;
-  return true;
-}
 
 void setup()
 {  
-  delay(50);  
+  delay(250);  
   Serial.begin(115200);
-  while( !Serial)
-    delay(100); // wait for external monitor to ready
-
+  delay(250);  
   Serial << endl << "Starting..." << endl;
 
   sensorsIntervalSetting.setDefaultValue(180).setValidator([](long candidate) {
     return (candidate >= 10) && (candidate <= 3000);
-  });
-  motionIntervalSetting.setDefaultValue(60).setValidator([](long candidate) {
-    return (candidate >= 10) && (candidate <= 300);
   });
   broadcastInterval.setDefaultValue(60).setValidator([](long candidate) {
     return (candidate >= 10) && (candidate <= 361);
@@ -89,17 +79,14 @@ void setup()
     return (candidate >= 0) && (candidate <= 4);
   });
 
-
   temperatureMonitor.setMeasurementInterval(sensorsIntervalSetting.get());
   temperatureMonitor.setModel((DHTesp::DHT_MODEL_t)dhtType.get());
-  motionMonitor.setMotionHoldInterval(motionIntervalSetting.get());
   metricsNode.setMeasurementInterval(60);
 
   Homie_setFirmware(SKN_MOD_NAME, SKN_MOD_VERSION);
   Homie_setBrand(SKN_MOD_BRAND);
 
-  Homie.setBroadcastHandler(broadcastHandler)
-      .setup();
+  Homie.setup();
 }
 
 void loop()

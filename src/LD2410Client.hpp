@@ -1,5 +1,5 @@
 /**
- * Homie Node for RCWL-0516 Doppler Radar Microwave Motion Sensor
+ * Homie Node for LD2410 mmWave Radar Motion Sensor
  * 
  * GPIO pin for RCWL should have a pull down resistor to keep inactive state low
  * GPIO 16 has the INPUT_PULLDOWN_16 capability, but it is also the wakeup pin
@@ -9,40 +9,47 @@
 #pragma once
 
 #include <Homie.hpp>
+#include "SoftwareSerial.h"
+#include <ld2410.h>
 
-class RCWLNode : public HomieNode {
+class LD2410Client : public HomieNode {
 
 public:
-  RCWLNode(const uint8_t rcwlPin, const char *id, const char *name, const char *nType, const int motionHoldInterval);
+  LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin);
 
   void setMotionHoldInterval(unsigned long interval) { _motionHoldInterval = interval; }
   unsigned long getMotionHoldInterval() const { return _motionHoldInterval; }
 
 protected:
-  void setup() override;
-  void loop() override;
-  
+  virtual void setup() override;
+  virtual void loop() override;
+  virtual void onReadyToOperate() override;
+
 private:
   // suggested rate is 1/60Hz (1m)
   static const int MIN_INTERVAL  = 10;  // in seconds
   static const int HOLD_INTERVAL = 60;
 
-  const char *cCaption = "• RCWL-0516 Doppler Radar Microwave Motion Sensor:";
+  const char *cCaption = "• LD2410 mmWave Radar Motion Sensor:";
   const char* cIndent  = "  ◦ ";
 
   // Motion Node Properties
-  int _motionPin = 0;
+  const uint8_t _rxPin;
+  const uint8_t _txPin;
+  const uint8_t _ioPin;
+
   const char *cProperty = "motion";
   const char *cPropertyName = "Motion";
   const char *cPropertyDataType = "enum";
-  const char *cPropertyFormat = "OPEN,CLOSED";
+  const char *cPropertyFormat = "ON,OFF";
   const char *cPropertyUnit = "";
 
   unsigned long _motionHoldInterval;
   
-  // RCWL-0516 Sensors address
+  // LD2410 Interface
   volatile bool _motion = false;
-  volatile byte _isrTrigger = LOW;
-  volatile unsigned long _isrTriggeredAt = 0L;
-  Bounce debouncer = Bounce();
+  volatile byte pin_gpio = LOW;
+    
+  SoftwareSerial &gpsSerial;
+  ld2410 radar;
 };
