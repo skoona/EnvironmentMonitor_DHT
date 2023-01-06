@@ -3,6 +3,7 @@
 .pioenvs
 .piolibdeps
 .vscode
-.vscode
-.vscode
 data/homie/config.json
+*.log
+test/*
+
