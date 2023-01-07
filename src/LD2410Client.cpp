@@ -4,12 +4,12 @@
  */
 #include "LD2410Client.hpp"
 
-LD2410Client::LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin)
+LD2410Client::LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin, const bool enableReporting)
     : HomieNode(id, name, nType, false, 0U, 0U),
     _rxPin(rxPin),
     _txPin(txPin),
-    _ioPin(ioPin)
-    // Serial2(_rxPin, _txPin, false, 128, true)
+    _ioPin(ioPin),
+    _reporting_enabled(enableReporting)
 {
   // Start up the library
   pinMode(_ioPin, INPUT);
@@ -38,7 +38,7 @@ void LD2410Client::setup() {
 
 
 //  // Start LD2410 Sensor
-//   radar.debug(Serial); 
+  radar.debug(Serial); 
 
   if (radar.begin(Serial2)) {
     Homie.getLogger() << "Sensor Initialized..." << endl;
@@ -61,35 +61,37 @@ void LD2410Client::setup() {
  * Called by Homie when homie is connected and in run mode
 */
 void LD2410Client::loop() {
-  // Serial2.listen();
-
-  // radar.ld2410_loop();
+  radar.ld2410_loop();
   
-  // if (radar.isConnected() && millis() - _lastReading > 1000) // Report every 1000ms
-  // {
-  //   _lastReading = millis();
-    // if (Serial2.available()) {
-    //   Serial.print(buildWithAlarmSerialStudioCSV());
-      
-    // }
-    if (_motion != (digitalRead(_ioPin) ? true : false)) {
-      _motion = (digitalRead(_ioPin) ? true : false);
-      if (_motion) {
-        Homie.getLogger() << F("〽 Sending Presence: ") << endl;
-        Homie.getLogger() << cIndent
-                          << F("✖ Motion Detected: ON ")
-                          << endl;
-        setProperty(cProperty).setRetained(true).send("ON");
-      } else {
-        Homie.getLogger() << F("〽 Sending Presence: ") << endl;
-        Homie.getLogger() << cIndent
-                          << F("✖ Motion Detected: OFF ")
-                          << endl;
-        setProperty(cProperty).setRetained(true).send("OFF");
-      }
+  // process reporting data
+  if (radar.isConnected() && millis() - _lastReading > _targetReportingInterval) // Report every 1000ms
+  {
+    _lastReading = millis();
+    if (_reporting_enabled &  Serial2.available()) {
+      Serial.print(processTargetReportingData());      
     }
-  // }
-  // commandHandler();
+  }
+  
+  // Module controls hold time, so all we need is to read the io pin
+  if (_motion != (digitalRead(_ioPin) ? true : false)) {
+    _motion = (digitalRead(_ioPin) ? true : false);
+    if (_motion) {
+      Homie.getLogger() << F("〽 Sending Presence: ") << endl;
+      Homie.getLogger() << cIndent
+                        << F("✖ Motion Detected: ON ")
+                        << endl;
+      setProperty(cProperty).setRetained(true).send("ON");
+    } else {
+      Homie.getLogger() << F("〽 Sending Presence: ") << endl;
+      Homie.getLogger() << cIndent
+                        << F("✖ Motion Detected: OFF ")
+                        << endl;
+      setProperty(cProperty).setRetained(true).send("OFF");
+    }
+  }
+
+  // Read from Serial, look for commands
+  commandHandler();
 }
 
 // clang-format off
@@ -132,10 +134,10 @@ String LD2410Client::commandProcessor(String &cmdStr) {
   if (cmdStr.equals("help") || iCmd == 1) {
     sBuf += availableCommands();
   } else if (cmdStr.equals("streamstart") || iCmd == 2) {
-    sending_enabled = true;
+    _reporting_enabled = true;
     sBuf += "\nSerialStudio UDP Stream Enabled. \n";
   } else if (cmdStr.equals("streamstop") || iCmd == 3) {
-    sending_enabled = false;
+    _reporting_enabled = false;
     sBuf += "\nSerialStudio UDP Stream Disabled.\n";
   } else if (cmdStr.equals("read") || iCmd == 4) {
     sBuf += "\nReading from sensor: ";
@@ -348,7 +350,7 @@ void LD2410Client::commandHandler() {
 //              %1,2,3, 4, 5,6,7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44
 /*LD2410 Sensor 01,0,0,62,43,0,0,00,50,15, 0, 0,50,15, 0, 0,40, 5,40,62,30, 9,40,45,20, 3,30,25,15, 6,30,18,15, 1,20,10,15, 2,20, 8,15, 7,20, 6*/
 // clang-format on
-String LD2410Client::buildWithAlarmSerialStudioCSV() {
+String LD2410Client::processTargetReportingData() {
   uint32_t pos = 0;
   uint32_t pos1 = 0;
   pos = snprintf(serialBuffer, sizeof(serialBuffer),

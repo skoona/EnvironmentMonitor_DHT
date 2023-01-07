@@ -26,7 +26,7 @@ void MetricsNode::setup()
                     << F(" MAC: ")
                     << WiFi.macAddress().c_str()
                     << F(" Reset Reason: ")
-                    << ESP.getResetReason().c_str()
+                    << esp_rom_get_reset_reason(0)
                     << endl;
 
   advertise(cPropertySignal)
@@ -43,55 +43,42 @@ void MetricsNode::setup()
       .setName(cPropertyResetReasonName)
       .setDatatype(cPropertyResetReasonDataType)
       .setUnit(cPropertyResetReasonFormat);
-
-  advertise(cPropertySupply)
-      .setName(cPropertySupplyName)
-      .setDatatype(cPropertySupplyDataType)
-      .setUnit(cPropertySupplyFormat);
 }
 
   /**
    * Called by Homie when homie is connected and in run mode
   */
-  void MetricsNode::loop() {
-    if (millis() - _lastMeasurement >= (_measurementInterval * 1000UL) || _lastMeasurement == 0) {
-      _lastMeasurement = millis();
+void MetricsNode::loop() {
+  if (millis() - _lastMeasurement >= (_measurementInterval * 1000UL) || _lastMeasurement == 0) {
+    _lastMeasurement = millis();
 
-      Homie.getLogger() << cIndent 
-                        << F("〽 Sending Device Metrics: ") 
-                        << getId() 
-                        << endl;
-      Homie.getLogger() << cIndent
-                        << F("RSSI: ")
-                        << WiFi.RSSI()
-                        << endl;
-      Homie.getLogger() << cIndent
-                        << F(" MAC: ")
-                        << WiFi.macAddress().c_str()
-                        << endl;
-      Homie.getLogger() << cIndent
-                        << F(" Reset Reason: ")
-                        << ESP.getResetReason().c_str()
-                        << endl;
-      Homie.getLogger() << cIndent
-                        << F(" 3.3V Supply: ")
-                        << (ESP.getVcc() / 1000.0)
-                        << endl;
+    Homie.getLogger() << cIndent 
+                      << F("〽 Sending Device Metrics: ") 
+                      << getId() 
+                      << endl;
+    Homie.getLogger() << cIndent
+                      << F("RSSI: ")
+                      << WiFi.RSSI()
+                      << endl;
+    Homie.getLogger() << cIndent
+                      << F(" MAC: ")
+                      << WiFi.macAddress().c_str()
+                      << endl;
+    Homie.getLogger() << cIndent
+                      << F(" Reset Reason: ")
+                      << esp_reset_reason()
+                      << endl;
 
-      setProperty(cPropertySignal)
-          .setRetained(true)
-          .send(String(WiFi.RSSI()));
+    setProperty(cPropertySignal)
+        .setRetained(true)
+        .send(String(WiFi.RSSI()));
 
-      setProperty(cPropertyMac)
-          .setRetained(true)
-          .send(WiFi.macAddress());
+    setProperty(cPropertyMac)
+        .setRetained(true)
+        .send(WiFi.macAddress());
 
-      setProperty(cPropertyResetReason)
-          .setRetained(true)
-          .send(ESP.getResetReason());
-
-      setProperty(cPropertySupply)
-          .setRetained(true)
-          .send(String((ESP.getVcc() / 1000.0)));
-    }
+    setProperty(cPropertyResetReason)
+        .setRetained(true)
+        .send(String(esp_reset_reason()));
   }
+}

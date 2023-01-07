@@ -7,11 +7,6 @@
 
 #include <Homie.hpp>
 
-#ifdef ESP32
-#pragma message(THIS EXAMPLE IS FOR ESP8266 ONLY !)
-#error Select ESP8266 board.
-#endif
-
 
 class MetricsNode : public HomieNode {
 

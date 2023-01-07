@@ -44,22 +44,23 @@ extern "C"
 #define SKN_DNODE_ID "Hardware"
 
 // Select pins for Temperature and Motion
-#define PIN_DHT  D6                  // 12
-#define LD_IO D5                  // 14
+#define PIN_DHT  15
+#define LD_IO 5                  
 #define LD_RX 16 
 #define LD_TX 17 
 #define DHT_TYPE DHTesp::DHT_MODEL_t::DHT22 // DHTesp::DHT22
 
 #define SENSOR_READ_INTERVAL 300
 
-ADC_MODE(ADC_VCC); //vcc read in MetricsNode
+// ADC_MODE(ADC_VCC); //vcc read in MetricsNode
 
 HomieSetting<long> sensorsIntervalSetting("sensorInterval", "The interval in seconds to wait between sending commands.");
 HomieSetting<long> broadcastInterval("broadcastInterval", "how frequently to send pin values.");
 HomieSetting<long> dhtType("dhtType", "Type os Humidty Sensor where; DHTesp::DHT_MODEL_t::DHT11 = 1. DHTesp::DHT_MODEL_t::DHT22 = 2");
+HomieSetting<long> targetInterval("targetReportingInterval", "how frequently to send ld2410 target reporting values.");
 
 DHTNode temperatureMonitor(PIN_DHT, DHT_TYPE, SKN_TNODE_ID, SKN_TNODE_TITLE, SKN_TNODE_TYPE, SENSOR_READ_INTERVAL);
-LD2410Client  motionMonitor(SKN_MNODE_ID, SKN_MNODE_TITLE, SKN_MNODE_TYPE, LD_RX, LD_TX, LD_IO);
+LD2410Client  occupancyMonitor(SKN_MNODE_ID, SKN_MNODE_TITLE, SKN_MNODE_TYPE, LD_RX, LD_TX, LD_IO, true);
 MetricsNode metricsNode(SKN_DNODE_ID, SKN_DNODE_TITLE, SKN_DNODE_TYPE);
 
 void setup()
@@ -70,7 +71,7 @@ void setup()
   Serial << endl << "Starting..." << endl;
 
   sensorsIntervalSetting.setDefaultValue(180).setValidator([](long candidate) {
-    return (candidate >= 10) && (candidate <= 3000);
+    return (candidate >= 10) && (candidate <= 1200);
   });
   broadcastInterval.setDefaultValue(60).setValidator([](long candidate) {
     return (candidate >= 10) && (candidate <= 361);
@@ -78,10 +79,14 @@ void setup()
   dhtType.setDefaultValue(2).setValidator([](long candidate) {
     return (candidate >= 0) && (candidate <= 4);
   });
-
+  targetInterval.setDefaultValue(1000).setValidator([](long candidate) {
+    return (candidate >= 1000) && (candidate <= 32000);
+  });
+  
   temperatureMonitor.setMeasurementInterval(sensorsIntervalSetting.get());
   temperatureMonitor.setModel((DHTesp::DHT_MODEL_t)dhtType.get());
   metricsNode.setMeasurementInterval(60);
+  occupancyMonitor.setTargetReportingInterval(targetInterval.get());
 
   Homie_setFirmware(SKN_MOD_NAME, SKN_MOD_VERSION);
   Homie_setBrand(SKN_MOD_BRAND);

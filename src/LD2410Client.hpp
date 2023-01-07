@@ -9,7 +9,6 @@
 #pragma once
 
 #include <Homie.hpp>
-// #include "SoftwareSerial.h"
 #include <ld2410.h>
 
 #define SNAME "LD2410-Sensor"
@@ -17,10 +16,10 @@
 class LD2410Client : public HomieNode {
 
 public:
-  LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin);
+  LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin, const bool enableReporting = false);
 
-  void setMotionHoldInterval(unsigned long interval) { _motionHoldInterval = interval; }
-  unsigned long getMotionHoldInterval() const { return _motionHoldInterval; }
+  void setTargetReportingInterval(unsigned long interval) { _targetReportingInterval = interval; }
+  unsigned long getTargetReportingInterval() const { return _targetReportingInterval; }
 
 protected:
   virtual void setup() override;
@@ -30,7 +29,7 @@ protected:
   String availableCommands();
   void   commandHandler();
   String commandProcessor(String &cmdStr);
-  String buildWithAlarmSerialStudioCSV();
+  String processTargetReportingData();
 
 private:
   // suggested rate is 1/60Hz (1m)
@@ -53,20 +52,19 @@ private:
   const char *cPropertyFormat = "ON,OFF";
   const char *cPropertyUnit = "";
 
-  unsigned long _motionHoldInterval;
+  unsigned long _targetReportingInterval = 1000;
   
   // LD2410 Interface
   volatile bool _motion = false;
   volatile byte pin_gpio = LOW;
-    
-  // SoftwareSerial gpsSerial;
+
   ld2410 radar;
 
   volatile bool udpFlag = false; // send for callback
   uint32_t lastReading = 0;
   uint32_t pos = 0;
   uint32_t pos1 = 0;
-  bool sending_enabled = false;
+  bool _reporting_enabled = false;
   String command = "";
   String output = "";
   char buffer1[128];
