@@ -12,6 +12,11 @@
 #include <ld2410.h>
 
 #define SNAME "LD2410-Sensor"
+#define LD_CMD_OK "0"
+#define LD_CMD_OKNL "0\n"
+#define LD_CMD_FAIL "1"
+#define LD_CMD_FAILNL "1\n"
+#define CM_TO_FEET_FACTOR  0.0328084
 
 class LD2410Client : public HomieNode {
 
@@ -20,53 +25,60 @@ public:
 
   void setTargetReportingInterval(unsigned long interval) { _targetReportingInterval = interval; }
   unsigned long getTargetReportingInterval() const { return _targetReportingInterval; }
+  void setBroadcastInterval(unsigned long interval) { _broadcastInterval = interval; }
+  unsigned long getBroadcastInterval() const { return _broadcastInterval; }
+  void setTargetReporting(bool enabled) { _reporting_enabled = enabled; }
+  bool isTargetReportingEnabled() const { return _reporting_enabled; }
 
 protected:
   virtual void setup() override;
   virtual void loop() override;
   virtual void onReadyToOperate() override;
+  virtual bool handleInput(const HomieRange &range, const String &property, const String &value);
 
+  const char * triggeredby();
   String availableCommands();
   void   commandHandler();
   String commandProcessor(String &cmdStr);
+  String processTargetData();
   String processTargetReportingData();
+  String processEngineeringReportData();
 
 private:
-  // suggested rate is 1/60Hz (1m)
-  static const int MIN_INTERVAL  = 10;  // in seconds
-  static const int HOLD_INTERVAL = 60;
-
-  const char *cCaption = "• LD2410 mmWave Radar Motion Sensor:";
+  const char *cCaption = "LD2410 mmWave Radar Motion Sensor:";
   const char* cIndent  = "  ◦ ";
 
   // Motion Node Properties
   const uint8_t _rxPin;
   const uint8_t _txPin;
   const uint8_t _ioPin;
-  
-  unsigned long _lastReading = 0;
+  bool _reporting_enabled = false;
 
-  const char *cProperty = "motion";
-  const char *cPropertyName = "Motion";
-  const char *cPropertyDataType = "enum";
-  const char *cPropertyFormat = "ON,OFF";
-  const char *cPropertyUnit = "";
+  const char *cPropertyMotion = "motion";
+  const char *cPropertyMotionName = "Motion";
+  const char *cPropertyMotionDataType = "enum";
+  const char *cPropertyMotionFormat = "ON,OFF";
+  const char *cPropertyMotionUnit = "";
 
-  unsigned long _targetReportingInterval = 1000;
-  
+  const char *cPropertyCommand = "system";
+  const char *cPropertyCommandName = "Command Handler";
+  const char *cPropertyCommandDataType = "string";
+  const char *cPropertyCommandFormat = "";
+
+  // Loop Interval Parms
+  uint32_t _targetReportingInterval = 15000;
+  uint32_t _broadcastInterval = 15000;
+  uint32_t _lastReport = 0;
+  uint32_t _lastBroadcast = 0;
+
   // LD2410 Interface
   volatile bool _motion = false;
-  volatile byte pin_gpio = LOW;
-
   ld2410 radar;
 
-  volatile bool udpFlag = false; // send for callback
-  uint32_t lastReading = 0;
-  uint32_t pos = 0;
-  uint32_t pos1 = 0;
-  bool _reporting_enabled = false;
+  // Command Processor Parms
   String command = "";
   String output = "";
+  String triggered = "";
   char buffer1[128];
   char serialBuffer[256];
 

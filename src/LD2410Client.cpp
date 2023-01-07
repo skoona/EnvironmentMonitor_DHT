@@ -16,6 +16,28 @@ LD2410Client::LD2410Client(const char *id, const char *name, const char *nType, 
 }
 
 /**
+ * Handles the received MQTT messages from Homie.
+ *
+ */
+bool LD2410Client::handleInput(const HomieRange &range, const String &property, const String &value)
+{
+    Homie.getLogger() << "nodeInputHandler()  " << property << ": " << value << endl;
+
+    if (property.equalsIgnoreCase(cPropertyCommand))
+    {
+      String _value = value;
+      String _response =commandProcessor( _value );
+       Homie.getLogger() << cIndent
+                        << F("✖Command Response: ") << value << "\n"
+                        << _response
+                        << endl;
+      setProperty(cPropertyCommand).setRetained(false).send(_response.c_str());
+    }
+   
+    return true;
+}
+
+/**
  *
  */
 void LD2410Client::onReadyToOperate()
@@ -30,63 +52,65 @@ void LD2410Client::onReadyToOperate()
 */
 void LD2410Client::setup() {
   Homie.getLogger() << cCaption << endl;
-  Homie.getLogger() << cIndent << cPropertyName << endl;
 
   // start path to LD2410
   // radar.debug(Serial);  // enable debug output to console
   Serial2.begin(256000, SERIAL_8N1, _rxPin, _txPin); // UART for monitoring the radar rx, tx  
 
-
-//  // Start LD2410 Sensor
-  radar.debug(Serial); 
-
   if (radar.begin(Serial2)) {
-    Homie.getLogger() << "Sensor Initialized..." << endl;
-    delay(500);
-    radar.requestStartEngineeringMode();
+    Homie.getLogger() << cCaption << "Initialized..." << endl;
   } else {
-    Homie.getLogger() <<" Sensor was not connected" << endl;
+    Homie.getLogger() << cCaption << " was not connected" << endl;
   }
 
   _motion = (digitalRead(_ioPin) ? true : false);
 
-  advertise(cProperty)
-      .setName(cPropertyName)
-      .setDatatype(cPropertyDataType)
-      .setFormat(cPropertyFormat)
-      .setUnit(cPropertyUnit);
+  advertise(cPropertyMotion)
+      .setName(cPropertyMotionName)
+      .setDatatype(cPropertyMotionDataType)
+      .setFormat(cPropertyMotionFormat)
+      .setUnit(cPropertyMotionUnit);
+
+  advertise(cPropertyCommand)
+      .setName(cPropertyCommandName)
+      .setDatatype(cPropertyCommandDataType)
+      .setFormat(cPropertyCommandFormat)
+      .settable();
 }
 
 /**
  * Called by Homie when homie is connected and in run mode
 */
 void LD2410Client::loop() {
+  uint32_t timer = millis();
   radar.ld2410_loop();
   
   // process reporting data
-  if (radar.isConnected() && millis() - _lastReading > _targetReportingInterval) // Report every 1000ms
+  if (radar.isConnected() && (timer - _lastReport) > _targetReportingInterval) // Report every 1000ms
   {
-    _lastReading = millis();
-    if (_reporting_enabled &  Serial2.available()) {
-      Serial.print(processTargetReportingData());      
+    _lastReport = timer;
+    if (_reporting_enabled) {
+      String pData = processTargetData();
+      Homie.getLogger() << processTargetData() << endl;      
+      setProperty(cPropertyCommand).setRetained(false).send(pData.c_str());
     }
   }
   
   // Module controls hold time, so all we need is to read the io pin
-  if (_motion != (digitalRead(_ioPin) ? true : false)) {
-    _motion = (digitalRead(_ioPin) ? true : false);
+  if ((_motion != digitalRead(_ioPin)) || ((timer - _lastBroadcast) > _broadcastInterval)) {
+        
+    _lastBroadcast = timer;
+    _motion = digitalRead(_ioPin);
     if (_motion) {
-      Homie.getLogger() << F("〽 Sending Presence: ") << endl;
       Homie.getLogger() << cIndent
                         << F("✖ Motion Detected: ON ")
                         << endl;
-      setProperty(cProperty).setRetained(true).send("ON");
+      setProperty(cPropertyMotion).setRetained(true).send("ON");
     } else {
-      Homie.getLogger() << F("〽 Sending Presence: ") << endl;
       Homie.getLogger() << cIndent
                         << F("✖ Motion Detected: OFF ")
                         << endl;
-      setProperty(cProperty).setRetained(true).send("OFF");
+      setProperty(cPropertyMotion).setRetained(true).send("OFF");
     }
   }
 
@@ -100,7 +124,7 @@ void LD2410Client::loop() {
 String LD2410Client::availableCommands() {
   String sCmd = "";
   sCmd += "\nNode: ";
-  sCmd += SNAME;
+  sCmd += cCaption;
   sCmd += "\nSupported commands:";
   sCmd += "\n\t( 1) help:         this text.";
   sCmd += "\n\t( 2) streamstart:  start sending udp data to SerialStudio.";
@@ -127,22 +151,22 @@ String LD2410Client::availableCommands() {
  * Otherwise all commands are available as options
  */
 String LD2410Client::commandProcessor(String &cmdStr) {
-  String sBuf = "\n";
+  String sBuf = "";
   int iCmd = cmdStr.toInt();
   cmdStr.trim();
 
   if (cmdStr.equals("help") || iCmd == 1) {
+    sBuf += LD_CMD_OKNL;
     sBuf += availableCommands();
   } else if (cmdStr.equals("streamstart") || iCmd == 2) {
     _reporting_enabled = true;
-    sBuf += "\nSerialStudio UDP Stream Enabled. \n";
+    sBuf += LD_CMD_OK;
   } else if (cmdStr.equals("streamstop") || iCmd == 3) {
     _reporting_enabled = false;
-    sBuf += "\nSerialStudio UDP Stream Disabled.\n";
+    sBuf += LD_CMD_OK;
   } else if (cmdStr.equals("read") || iCmd == 4) {
-    sBuf += "\nReading from sensor: ";
     if (radar.isConnected()) {
-      sBuf += "OK\n";
+      sBuf += LD_CMD_OKNL;
       if (radar.presenceDetected()) {
         if (radar.stationaryTargetDetected()) {
           sBuf += "Stationary target: ";
@@ -165,15 +189,14 @@ String LD2410Client::commandProcessor(String &cmdStr) {
           sBuf += " seconds\n";
         }
       } else {
-        sBuf += "\nnothing detected\n";
+        sBuf += LD_CMD_OK;
       }
     } else {
-      sBuf += "failed to read\n";
+      sBuf += LD_CMD_FAIL;
     }
   } else if (cmdStr.equals("readconfig") || iCmd == 5) {
-    sBuf += "\nReading configuration from sensor: ";
     if (radar.requestCurrentConfiguration()) {
-      sBuf += "OK\n";
+      sBuf += LD_CMD_OKNL;
       sBuf += "Maximum gate ID: ";
       sBuf += radar.cfgMaxGate();
       sBuf += "\n";
@@ -198,7 +221,7 @@ String LD2410Client::commandProcessor(String &cmdStr) {
         sBuf += " dBZ\n";
       }
     } else {
-      sBuf += "Failed\n";
+      sBuf += LD_CMD_FAIL;
     }
   } else if (cmdStr.startsWith("setmaxvalues") || iCmd == 6) {
     uint8_t firstSpace = cmdStr.indexOf(' ');
@@ -214,25 +237,20 @@ String LD2410Client::commandProcessor(String &cmdStr) {
 
     if (newMovingMaxDistance > 0 && newStationaryMaxDistance > 0 &&
         newMovingMaxDistance <= 8 && newStationaryMaxDistance <= 8) {
-      sBuf += "\nSetting max values to gate ";
-      sBuf += newMovingMaxDistance;
-      sBuf += " moving targets, gate ";
-      sBuf += newStationaryMaxDistance;
-      sBuf += " stationary targets, ";
-      sBuf += inactivityTimer;
-      sBuf += "s inactivity timer: ";
-      if (radar.setMaxValues(newMovingMaxDistance, newStationaryMaxDistance,
-                             inactivityTimer)) {
-        sBuf += "OK, now restart to apply settings\n";
+      if (radar.setMaxValues(newMovingMaxDistance, newStationaryMaxDistance,inactivityTimer)) {
+        if (radar.requestRestart()) {
+          delay(1500);
+          if (radar.requestStartEngineeringMode()) {
+            sBuf += LD_CMD_OK;
+          }
+        } else {
+          sBuf += LD_CMD_FAIL;
+        }
       } else {
-        sBuf += "failed\n";
+        sBuf += LD_CMD_FAIL;
       }
     } else {
-      sBuf += "Can't set distances to ";
-      sBuf += newMovingMaxDistance;
-      sBuf += " moving ";
-      sBuf += newStationaryMaxDistance;
-      sBuf += " stationary, try again\n";
+        sBuf += LD_CMD_FAIL;
     }
   } else if (cmdStr.startsWith("setsensitivity") || iCmd == 7) {
     uint8_t firstSpace = cmdStr.indexOf(' ');
@@ -250,56 +268,46 @@ String LD2410Client::commandProcessor(String &cmdStr) {
     // sensitivity value
     if (motionSensitivity >= 0 && stationarySensitivity >= 0 &&
         motionSensitivity <= 100 && stationarySensitivity <= 100) {
-      sBuf += "\nSetting gate ";
-      sBuf += gate;
-      sBuf += " motion sensitivity to ";
-      sBuf += motionSensitivity;
-      sBuf += " dBZ & stationary sensitivity to ";
-      sBuf += stationarySensitivity;
-      sBuf += " dBZ: \n";
-      if (radar.setGateSensitivityThreshold(gate, motionSensitivity,
-                                            stationarySensitivity)) {
-        sBuf += "OK, now restart to apply settings\n";
+      if (radar.setGateSensitivityThreshold(gate, motionSensitivity,stationarySensitivity)) {
+        if (radar.requestRestart()) {
+          delay(1500);
+          if (radar.requestStartEngineeringMode()) {
+            sBuf += LD_CMD_OK;
+          }
+        } else {
+          sBuf += LD_CMD_FAIL;
+        }
       } else {
-        sBuf += "failed\n";
+        sBuf += LD_CMD_FAIL;
       }
     } else {
-      sBuf += "Can't set gate ";
-      sBuf += gate;
-      sBuf += " motion sensitivity to ";
-      sBuf += motionSensitivity;
-      sBuf += " dBZ & stationary sensitivity to ";
-      sBuf += stationarySensitivity;
-      sBuf += " dBZ, try again\n";
+      sBuf += LD_CMD_FAIL;
     }
   } else if (cmdStr.equals("restart") || iCmd == 8) {
     if (radar.requestRestart()) {
       delay(1500);
       if (radar.requestStartEngineeringMode()) {
-        sBuf += "\nRestarting sensor: OK\n";
+        sBuf += LD_CMD_OK;
       }
     } else {
-      sBuf += "\nRestarting sensor: failed\n";
+      sBuf += LD_CMD_FAIL;
     }
   } else if (cmdStr.equals("readversion") || iCmd == 9) {
-    sBuf += "\nRequesting firmware version: ";
     if (radar.requestFirmwareVersion()) {
+      sBuf += LD_CMD_OKNL;
       sBuf += radar.cmdFirmwareVersion();
     } else {
-      sBuf += "Failed\n";
+      sBuf += LD_CMD_FAIL;
     }
   } else if (cmdStr.equals("factoryreset") || iCmd == 10) {
-    sBuf += "\nFactory resetting sensor: ";
     if (radar.requestFactoryReset()) {
-      sBuf += "OK, now restart sensor to take effect\n";
+      sBuf += LD_CMD_OK;      
     } else {
-      sBuf += "failed\n";
+      sBuf += LD_CMD_FAIL;
     }
   } else if (cmdStr.equals("deviceinfo") || iCmd == 11) {
-    sBuf += "\nLD2410 Device Information for Node: ";
-    sBuf += SNAME;
+    sBuf += LD_CMD_OKNL;
     radar.requestFirmwareVersion();
-
     sBuf += "\n\tData reporting mode: ";
     sBuf += (radar.isEngineeringMode() ? "Engineering Mode" : "Target Mode");
     sBuf += "\n\tCommunication protocol version: v";
@@ -312,15 +320,15 @@ String LD2410Client::commandProcessor(String &cmdStr) {
     sBuf += radar.engRetainDataValue();
     sBuf += "\n";
   } else if (cmdStr.equals("reboot") || iCmd == 12) {
-    ESP.restart();
+    esp_restart();
   } else {
-    sBuf += "\nUnknown command: ";
+    sBuf += LD_CMD_FAILNL;
+    sBuf += "Unknown command: ";
     sBuf += cmdStr;
     sBuf += "\n";
   }
 
   cmdStr.clear();
-  sBuf += "\n choose:> ";
 
   return sBuf;
 }
@@ -343,6 +351,44 @@ void LD2410Client::commandHandler() {
   }
 }
 
+/*
+ * Translate current status
+*/
+const char * LD2410Client::triggeredby() {
+
+  if(radar.isMoving() && radar.isStationary()) {
+    triggered = "Stationary and Moving";
+  } else if (radar.isStationary()) {
+    triggered = "Stationary";
+  } else if(radar.isMoving()) {
+    triggered = "Moving";
+  } else {
+    triggered = "Not Present";
+  }
+
+  return triggered.c_str();
+}
+
+String LD2410Client::processTargetData() {
+  if(radar.isEngineeringMode()) {
+    return processEngineeringReportData();
+  } else {
+    return processTargetReportingData();
+  }
+}
+
+// clang-format off
+String LD2410Client::processTargetReportingData() {
+  uint32_t pos = 0;
+  pos = snprintf(serialBuffer, sizeof(serialBuffer),
+                 "{\"name\":\"%s\",\"triggeredBy\":\"%s\",\"detectionDistanceFT\":%3.1f,\"movingTargetDistanceFT\":%3.1f,\"movingTargetEnergy\":%d,\"stationaryTargetDistanceFT\":%3.1f,\"stationaryTargetEnergy\":%d}", 
+                 cCaption, triggeredby(),
+                 (radar.detectionDistance() * CM_TO_FEET_FACTOR),
+                 (radar.movingTargetDistance() * CM_TO_FEET_FACTOR) , radar.movingTargetEnergy(),
+                 (radar.stationaryTargetDistance() * CM_TO_FEET_FACTOR), radar.stationaryTargetEnergy() );
+
+  return String(serialBuffer);
+}
 
 // clang-format off
 /*
@@ -350,15 +396,15 @@ void LD2410Client::commandHandler() {
 //              %1,2,3, 4, 5,6,7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44
 /*LD2410 Sensor 01,0,0,62,43,0,0,00,50,15, 0, 0,50,15, 0, 0,40, 5,40,62,30, 9,40,45,20, 3,30,25,15, 6,30,18,15, 1,20,10,15, 2,20, 8,15, 7,20, 6*/
 // clang-format on
-String LD2410Client::processTargetReportingData() {
+String LD2410Client::processEngineeringReportData() {
   uint32_t pos = 0;
   uint32_t pos1 = 0;
   pos = snprintf(serialBuffer, sizeof(serialBuffer),
-                 "/*%s,%d,%d,%d,%d,%d,%d,%d,%d,", SNAME,
+                 "/*%s,%d,%d,%d,%d,%d,%d,%d,%d,", cCaption,
                  radar.stationaryTargetDistance(), radar.detectionDistance(),
                  radar.stationaryTargetEnergy(), radar.movingTargetDistance(),
                  radar.detectionDistance(), radar.movingTargetEnergy(),
-                 radar.engRetainDataValue(), (pin_gpio ? 100 : 0));
+                 radar.engRetainDataValue(), (_motion ? 100 : 0));
 
   for (int x = 0; x < LD2410_MAX_GATES; ++x) {
     pos1 = snprintf(buffer1, sizeof(buffer1), "%d,%d,%d,%d,",
@@ -369,7 +415,6 @@ String LD2410Client::processTargetReportingData() {
     strcat(serialBuffer, buffer1);
     pos += pos1;
   }
-  // serialBuffer[--pos] = 0;
   strcat(serialBuffer, "*/\n");
 
   return String(serialBuffer);

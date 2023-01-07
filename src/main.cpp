@@ -12,7 +12,6 @@
 #include <Arduino.h>
 #include "DHTNode.hpp"
 #include "LD2410Client.hpp"
-#include "MetricsNode.hpp"
 
 #ifdef ESP8266
 extern "C"
@@ -27,7 +26,7 @@ extern "C"
  * Note: HomieNode(...range,lower,upper) manages this array suffix change; i.e no more name fixups
 */
 #define SKN_MOD_NAME "Monitor-DHT-mmWave-Metrics"
-#define SKN_MOD_VERSION "2.0.2"
+#define SKN_MOD_VERSION "3.0.0"
 #define SKN_MOD_BRAND "SknSensors"
 
 #define SKN_TNODE_TITLE "Temperature and Humidity Sensor"
@@ -39,10 +38,6 @@ extern "C"
 #define SKN_TNODE_ID "Ambient"    
 #define SKN_MNODE_ID "Occupancy"
 
-#define SKN_DNODE_TITLE "Device Info"
-#define SKN_DNODE_TYPE "Sensor"
-#define SKN_DNODE_ID "Hardware"
-
 // Select pins for Temperature and Motion
 #define PIN_DHT  15
 #define LD_IO 5                  
@@ -52,16 +47,14 @@ extern "C"
 
 #define SENSOR_READ_INTERVAL 300
 
-// ADC_MODE(ADC_VCC); //vcc read in MetricsNode
 
 HomieSetting<long> sensorsIntervalSetting("sensorInterval", "The interval in seconds to wait between sending commands.");
-HomieSetting<long> broadcastInterval("broadcastInterval", "how frequently to send pin values.");
 HomieSetting<long> dhtType("dhtType", "Type os Humidty Sensor where; DHTesp::DHT_MODEL_t::DHT11 = 1. DHTesp::DHT_MODEL_t::DHT22 = 2");
-HomieSetting<long> targetInterval("targetReportingInterval", "how frequently to send ld2410 target reporting values.");
+HomieSetting<long> broadcastInterval("broadcastInterval", "how frequently to send presence status in milliseconds.");
+HomieSetting<long> targetInterval("targetReportingInterval", "how frequently to send ld2410 target reporting values in milliseconds");
 
 DHTNode temperatureMonitor(PIN_DHT, DHT_TYPE, SKN_TNODE_ID, SKN_TNODE_TITLE, SKN_TNODE_TYPE, SENSOR_READ_INTERVAL);
 LD2410Client  occupancyMonitor(SKN_MNODE_ID, SKN_MNODE_TITLE, SKN_MNODE_TYPE, LD_RX, LD_TX, LD_IO, true);
-MetricsNode metricsNode(SKN_DNODE_ID, SKN_DNODE_TITLE, SKN_DNODE_TYPE);
 
 void setup()
 {  
@@ -73,20 +66,20 @@ void setup()
   sensorsIntervalSetting.setDefaultValue(180).setValidator([](long candidate) {
     return (candidate >= 10) && (candidate <= 1200);
   });
-  broadcastInterval.setDefaultValue(60).setValidator([](long candidate) {
-    return (candidate >= 10) && (candidate <= 361);
-  });
   dhtType.setDefaultValue(2).setValidator([](long candidate) {
     return (candidate >= 0) && (candidate <= 4);
   });
-  targetInterval.setDefaultValue(1000).setValidator([](long candidate) {
+  broadcastInterval.setDefaultValue(5000).setValidator([](long candidate) {
+    return (candidate >= 1000) && (candidate <= 32000);
+  });
+  targetInterval.setDefaultValue(5000).setValidator([](long candidate) {
     return (candidate >= 1000) && (candidate <= 32000);
   });
   
   temperatureMonitor.setMeasurementInterval(sensorsIntervalSetting.get());
   temperatureMonitor.setModel((DHTesp::DHT_MODEL_t)dhtType.get());
-  metricsNode.setMeasurementInterval(60);
   occupancyMonitor.setTargetReportingInterval(targetInterval.get());
+  occupancyMonitor.setBroadcastInterval(broadcastInterval.get());
 
   Homie_setFirmware(SKN_MOD_NAME, SKN_MOD_VERSION);
   Homie_setBrand(SKN_MOD_BRAND);
