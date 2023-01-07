@@ -46,6 +46,8 @@ extern "C"
 #define DHT_TYPE DHTesp::DHT_MODEL_t::DHT22 // DHTesp::DHT22
 
 #define SENSOR_READ_INTERVAL 300
+#define LD2410_TARGET_REPORTING true   // enables status property
+#define LD2410_ENGINEERING_REPORTING false  // enables status property with expanded details
 
 
 HomieSetting<long> sensorsIntervalSetting("sensorInterval", "The interval in seconds to wait between sending commands.");
@@ -54,7 +56,24 @@ HomieSetting<long> broadcastInterval("broadcastInterval", "how frequently to sen
 HomieSetting<long> targetInterval("targetReportingInterval", "how frequently to send ld2410 target reporting values in milliseconds");
 
 DHTNode temperatureMonitor(PIN_DHT, DHT_TYPE, SKN_TNODE_ID, SKN_TNODE_TITLE, SKN_TNODE_TYPE, SENSOR_READ_INTERVAL);
-LD2410Client  occupancyMonitor(SKN_MNODE_ID, SKN_MNODE_TITLE, SKN_MNODE_TYPE, LD_RX, LD_TX, LD_IO, true);
+LD2410Client  occupancyMonitor(SKN_MNODE_ID, SKN_MNODE_TITLE, SKN_MNODE_TYPE, LD_RX, LD_TX, LD_IO, LD2410_TARGET_REPORTING, LD2410_ENGINEERING_REPORTING);
+
+bool bRunOnce = true;
+
+/* 
+ * Settings are not read until after setup() runs
+ * so value would only return default values
+ * this once function overcomes that short fall
+*/
+void readyToOperate() {
+  if(bRunOnce) {
+    bRunOnce = false;
+    temperatureMonitor.setMeasurementInterval(sensorsIntervalSetting.get());
+    temperatureMonitor.setModel((DHTesp::DHT_MODEL_t)dhtType.get());
+    occupancyMonitor.setTargetReportingInterval(targetInterval.get());
+    occupancyMonitor.setBroadcastInterval(broadcastInterval.get());
+  }
+}
 
 void setup()
 {  
@@ -70,17 +89,12 @@ void setup()
     return (candidate >= 0) && (candidate <= 4);
   });
   broadcastInterval.setDefaultValue(5000).setValidator([](long candidate) {
-    return (candidate >= 1000) && (candidate <= 32000);
+    return (candidate >= 5000) && (candidate <= 128000);
   });
   targetInterval.setDefaultValue(5000).setValidator([](long candidate) {
-    return (candidate >= 1000) && (candidate <= 32000);
+    return (candidate >= 1000) && (candidate <= 128000);
   });
   
-  temperatureMonitor.setMeasurementInterval(sensorsIntervalSetting.get());
-  temperatureMonitor.setModel((DHTesp::DHT_MODEL_t)dhtType.get());
-  occupancyMonitor.setTargetReportingInterval(targetInterval.get());
-  occupancyMonitor.setBroadcastInterval(broadcastInterval.get());
-
   Homie_setFirmware(SKN_MOD_NAME, SKN_MOD_VERSION);
   Homie_setBrand(SKN_MOD_BRAND);
 
@@ -89,5 +103,6 @@ void setup()
 
 void loop()
 {
+  readyToOperate();
   Homie.loop();
 }

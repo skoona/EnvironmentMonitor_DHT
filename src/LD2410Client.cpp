@@ -4,12 +4,13 @@
  */
 #include "LD2410Client.hpp"
 
-LD2410Client::LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin, const bool enableReporting)
+LD2410Client::LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin, const bool enableReporting, const bool engineeringMode)
     : HomieNode(id, name, nType, false, 0U, 0U),
     _rxPin(rxPin),
     _txPin(txPin),
     _ioPin(ioPin),
-    _reporting_enabled(enableReporting)
+    _reporting_enabled(enableReporting),
+    _engineering_mode(engineeringMode)
 {
   // Start up the library
   pinMode(_ioPin, INPUT);
@@ -43,6 +44,7 @@ bool LD2410Client::handleInput(const HomieRange &range, const String &property, 
 void LD2410Client::onReadyToOperate()
 {
   _motion = false;
+
   Homie.getLogger() << cCaption << endl;
   Homie.getLogger() << cIndent << "onReadyToOperate()" << endl;
 }
@@ -58,7 +60,11 @@ void LD2410Client::setup() {
   Serial2.begin(256000, SERIAL_8N1, _rxPin, _txPin); // UART for monitoring the radar rx, tx  
 
   if (radar.begin(Serial2)) {
-    Homie.getLogger() << cCaption << "Initialized..." << endl;
+    Homie.getLogger() << cCaption << " Initialized..." << endl;
+    delay(500);
+    if(_engineering_mode) {
+      radar.requestStartEngineeringMode();
+    }
   } else {
     Homie.getLogger() << cCaption << " was not connected" << endl;
   }
@@ -71,11 +77,17 @@ void LD2410Client::setup() {
       .setFormat(cPropertyMotionFormat)
       .setUnit(cPropertyMotionUnit);
 
+  advertise(cPropertyStatus)
+      .setName(cPropertyStatusName)
+      .setDatatype(cPropertyStatusDataType)
+      .setFormat(cPropertyStatusFormat);
+
   advertise(cPropertyCommand)
       .setName(cPropertyCommandName)
       .setDatatype(cPropertyCommandDataType)
       .setFormat(cPropertyCommandFormat)
       .settable();
+
 }
 
 /**
@@ -92,7 +104,7 @@ void LD2410Client::loop() {
     if (_reporting_enabled) {
       String pData = processTargetData();
       Homie.getLogger() << processTargetData() << endl;      
-      setProperty(cPropertyCommand).setRetained(false).send(pData.c_str());
+      setProperty(cPropertyStatus).setRetained(false).send(pData.c_str());
     }
   }
   
@@ -240,9 +252,10 @@ String LD2410Client::commandProcessor(String &cmdStr) {
       if (radar.setMaxValues(newMovingMaxDistance, newStationaryMaxDistance,inactivityTimer)) {
         if (radar.requestRestart()) {
           delay(1500);
-          if (radar.requestStartEngineeringMode()) {
-            sBuf += LD_CMD_OK;
+          if(radar.isEngineeringMode()) {
+            radar.requestStartEngineeringMode();
           }
+          sBuf += LD_CMD_OK;
         } else {
           sBuf += LD_CMD_FAIL;
         }
@@ -271,9 +284,10 @@ String LD2410Client::commandProcessor(String &cmdStr) {
       if (radar.setGateSensitivityThreshold(gate, motionSensitivity,stationarySensitivity)) {
         if (radar.requestRestart()) {
           delay(1500);
-          if (radar.requestStartEngineeringMode()) {
-            sBuf += LD_CMD_OK;
+          if(radar.isEngineeringMode()) {
+            radar.requestStartEngineeringMode();
           }
+          sBuf += LD_CMD_OK;
         } else {
           sBuf += LD_CMD_FAIL;
         }
@@ -286,9 +300,10 @@ String LD2410Client::commandProcessor(String &cmdStr) {
   } else if (cmdStr.equals("restart") || iCmd == 8) {
     if (radar.requestRestart()) {
       delay(1500);
-      if (radar.requestStartEngineeringMode()) {
-        sBuf += LD_CMD_OK;
+      if(radar.isEngineeringMode()) {
+        radar.requestStartEngineeringMode();
       }
+      sBuf += LD_CMD_OK;
     } else {
       sBuf += LD_CMD_FAIL;
     }
@@ -377,12 +392,14 @@ String LD2410Client::processTargetData() {
   }
 }
 
-// clang-format off
+/*
+ * Basic Target Reporting Data
+*/
 String LD2410Client::processTargetReportingData() {
   uint32_t pos = 0;
   pos = snprintf(serialBuffer, sizeof(serialBuffer),
-                 "{\"name\":\"%s\",\"triggeredBy\":\"%s\",\"detectionDistanceFT\":%3.1f,\"movingTargetDistanceFT\":%3.1f,\"movingTargetEnergy\":%d,\"stationaryTargetDistanceFT\":%3.1f,\"stationaryTargetEnergy\":%d}", 
-                 cCaption, triggeredby(),
+                 "{\"%s\":{\"unitOfMeasure\":\"feet\",\"triggeredBy\":\"%s\",\"detectionDistance\":%3.1f,\"movingTargetDistance\":%3.1f,\"movingTargetEnergy\":%d,\"stationaryTargetDistance\":%3.1f,\"stationaryTargetEnergy\":%d}}", 
+                 LD_OCCUPANCY_TARGET_JSON, triggeredby(),
                  (radar.detectionDistance() * CM_TO_FEET_FACTOR),
                  (radar.movingTargetDistance() * CM_TO_FEET_FACTOR) , radar.movingTargetEnergy(),
                  (radar.stationaryTargetDistance() * CM_TO_FEET_FACTOR), radar.stationaryTargetEnergy() );
@@ -390,32 +407,30 @@ String LD2410Client::processTargetReportingData() {
   return String(serialBuffer);
 }
 
-// clang-format off
 /*
- * CSV like Values for SerialStudio App - see test folder */
-//              %1,2,3, 4, 5,6,7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44
-/*LD2410 Sensor 01,0,0,62,43,0,0,00,50,15, 0, 0,50,15, 0, 0,40, 5,40,62,30, 9,40,45,20, 3,30,25,15, 6,30,18,15, 1,20,10,15, 2,20, 8,15, 7,20, 6*/
-// clang-format on
+ * Engineering level Rreporting Data
+*/
 String LD2410Client::processEngineeringReportData() {
   uint32_t pos = 0;
   uint32_t pos1 = 0;
   pos = snprintf(serialBuffer, sizeof(serialBuffer),
-                 "/*%s,%d,%d,%d,%d,%d,%d,%d,%d,", cCaption,
-                 radar.stationaryTargetDistance(), radar.detectionDistance(),
-                 radar.stationaryTargetEnergy(), radar.movingTargetDistance(),
-                 radar.detectionDistance(), radar.movingTargetEnergy(),
-                 radar.engRetainDataValue(), (_motion ? 100 : 0));
+                 "{\"%s\":{\"unitOfMeasure\":\"feet\",\"triggeredBy\":\"%s\",\"detectionDistance\":%3.1f,\"movingTargetDistance\":%3.1f,\"movingTargetEnergy\":%d,\"stationaryTargetDistance\":%3.1f,\"stationaryTargetEnergy\":%d,\"maxMovingDistanceGate\":%d,\"maxStaticDistanceGate\":%d,\"gates\":{", 
+                 LD_OCCUPANCY_ENGINEERING_JSON, triggeredby(),
+                 (radar.detectionDistance() * CM_TO_FEET_FACTOR),
+                 (radar.movingTargetDistance() * CM_TO_FEET_FACTOR) , radar.movingTargetEnergy(),
+                 (radar.stationaryTargetDistance() * CM_TO_FEET_FACTOR), radar.stationaryTargetEnergy(),
+                 radar.engMaxMovingDistanceGate(), radar.engMaxStaticDistanceGate());
 
   for (int x = 0; x < LD2410_MAX_GATES; ++x) {
-    pos1 = snprintf(buffer1, sizeof(buffer1), "%d,%d,%d,%d,",
-                    radar.cfgMovingGateSensitivity(x),
+    pos1 = snprintf(buffer1, sizeof(buffer1), "\"%d\":{\"movingDistanceGateEnergy\":%d,\"StaticDistanceGateEnergy\":%d},", 
+                    x,
                     radar.engMovingDistanceGateEnergy(x),
-                    radar.cfgStationaryGateSensitivity(x),
                     radar.engStaticDistanceGateEnergy(x));
+    
     strcat(serialBuffer, buffer1);
-    pos += pos1;
   }
-  strcat(serialBuffer, "*/\n");
+  serialBuffer[(strlen(serialBuffer) -1)]=' '; 
+  strcat(serialBuffer, "}}}");
 
   return String(serialBuffer);
 }

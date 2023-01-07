@@ -11,17 +11,18 @@
 #include <Homie.hpp>
 #include <ld2410.h>
 
-#define SNAME "LD2410-Sensor"
 #define LD_CMD_OK "0"
 #define LD_CMD_OKNL "0\n"
 #define LD_CMD_FAIL "1"
 #define LD_CMD_FAILNL "1\n"
 #define CM_TO_FEET_FACTOR  0.0328084
+#define LD_OCCUPANCY_TARGET_JSON "OccupancyTarget"
+#define LD_OCCUPANCY_ENGINEERING_JSON "OccupancyEngineering"
 
 class LD2410Client : public HomieNode {
 
 public:
-  LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin, const bool enableReporting = false);
+  LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin, const bool enableReporting = false, const bool engineeringMode= false);
 
   void setTargetReportingInterval(unsigned long interval) { _targetReportingInterval = interval; }
   unsigned long getTargetReportingInterval() const { return _targetReportingInterval; }
@@ -53,6 +54,7 @@ private:
   const uint8_t _txPin;
   const uint8_t _ioPin;
   bool _reporting_enabled = false;
+  bool _engineering_mode = false;
 
   const char *cPropertyMotion = "motion";
   const char *cPropertyMotionName = "Motion";
@@ -64,6 +66,11 @@ private:
   const char *cPropertyCommandName = "Command Handler";
   const char *cPropertyCommandDataType = "string";
   const char *cPropertyCommandFormat = "";
+
+  const char *cPropertyStatus = "occupancy";
+  const char *cPropertyStatusName = "Occupancy";
+  const char *cPropertyStatusDataType = "json";
+  const char *cPropertyStatusFormat = "";
 
   // Loop Interval Parms
   uint32_t _targetReportingInterval = 15000;
@@ -80,6 +87,6 @@ private:
   String output = "";
   String triggered = "";
   char buffer1[128];
-  char serialBuffer[256];
+  char serialBuffer[3172];
 
 };
