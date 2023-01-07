@@ -26,7 +26,7 @@ extern "C"
  * ex: sknSensors/deviceName/DHT_0/temperature -> 72.3 degress
  * Note: HomieNode(...range,lower,upper) manages this array suffix change; i.e no more name fixups
 */
-#define SKN_MOD_NAME "Monitor-DHT-RCWL-Metrics"
+#define SKN_MOD_NAME "Monitor-DHT-mmWave-Metrics"
 #define SKN_MOD_VERSION "2.0.2"
 #define SKN_MOD_BRAND "SknSensors"
 
@@ -41,7 +41,7 @@ extern "C"
 
 #define SKN_DNODE_TITLE "Device Info"
 #define SKN_DNODE_TYPE "Sensor"
-#define SKN_DNODE_ID "Hrdware"
+#define SKN_DNODE_ID "Hardware"
 
 // Select pins for Temperature and Motion
 #define PIN_DHT  D6                  // 12

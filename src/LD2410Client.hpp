@@ -12,6 +12,8 @@
 #include "SoftwareSerial.h"
 #include <ld2410.h>
 
+#define SNAME "LD2410-Sensor"
+
 class LD2410Client : public HomieNode {
 
 public:
@@ -25,6 +27,11 @@ protected:
   virtual void loop() override;
   virtual void onReadyToOperate() override;
 
+  String availableCommands();
+  void   commandHandler();
+  String commandProcessor(String &cmdStr);
+  String buildWithAlarmSerialStudioCSV();
+
 private:
   // suggested rate is 1/60Hz (1m)
   static const int MIN_INTERVAL  = 10;  // in seconds
@@ -37,6 +44,8 @@ private:
   const uint8_t _rxPin;
   const uint8_t _txPin;
   const uint8_t _ioPin;
+  
+  unsigned long _lastReading = 0;
 
   const char *cProperty = "motion";
   const char *cPropertyName = "Motion";
@@ -50,6 +59,17 @@ private:
   volatile bool _motion = false;
   volatile byte pin_gpio = LOW;
     
-  SoftwareSerial &gpsSerial;
+  SoftwareSerial gpsSerial;
   ld2410 radar;
+
+  volatile bool udpFlag = false; // send for callback
+  uint32_t lastReading = 0;
+  uint32_t pos = 0;
+  uint32_t pos1 = 0;
+  bool sending_enabled = false;
+  String command = "";
+  String output = "";
+  char buffer1[128];
+  char serialBuffer[256];
+
 };
