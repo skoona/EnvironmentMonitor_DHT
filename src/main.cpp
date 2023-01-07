@@ -46,8 +46,8 @@ extern "C"
 // Select pins for Temperature and Motion
 #define PIN_DHT  D6                  // 12
 #define LD_IO D5                  // 14
-#define LD_RX D7 // 13
-#define LD_TX D8 // 15
+#define LD_RX 16 
+#define LD_TX 17 
 #define DHT_TYPE DHTesp::DHT_MODEL_t::DHT22 // DHTesp::DHT22
 
 #define SENSOR_READ_INTERVAL 300

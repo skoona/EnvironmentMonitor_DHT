@@ -9,7 +9,7 @@
 #pragma once
 
 #include <Homie.hpp>
-#include "SoftwareSerial.h"
+// #include "SoftwareSerial.h"
 #include <ld2410.h>
 
 #define SNAME "LD2410-Sensor"
@@ -59,7 +59,7 @@ private:
   volatile bool _motion = false;
   volatile byte pin_gpio = LOW;
     
-  SoftwareSerial gpsSerial;
+  // SoftwareSerial gpsSerial;
   ld2410 radar;
 
   volatile bool udpFlag = false; // send for callback

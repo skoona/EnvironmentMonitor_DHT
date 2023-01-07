@@ -8,8 +8,8 @@ LD2410Client::LD2410Client(const char *id, const char *name, const char *nType, 
     : HomieNode(id, name, nType, false, 0U, 0U),
     _rxPin(rxPin),
     _txPin(txPin),
-    _ioPin(ioPin),
-    gpsSerial(_rxPin, _txPin, false, 128, true)
+    _ioPin(ioPin)
+    // Serial2(_rxPin, _txPin, false, 128, true)
 {
   // Start up the library
   pinMode(_ioPin, INPUT);
@@ -20,7 +20,7 @@ LD2410Client::LD2410Client(const char *id, const char *name, const char *nType, 
  */
 void LD2410Client::onReadyToOperate()
 {
-  _motion = true;
+  _motion = false;
   Homie.getLogger() << cCaption << endl;
   Homie.getLogger() << cIndent << "onReadyToOperate()" << endl;
 }
@@ -32,22 +32,15 @@ void LD2410Client::setup() {
   Homie.getLogger() << cCaption << endl;
   Homie.getLogger() << cIndent << cPropertyName << endl;
 
-// Start the Software Serial Port
-  gpsSerial.begin(256000);
-  
-  // gpsSerial.listen();
-
-  while(!gpsSerial.available()) {
-    Serial.print(".");
-    delay(500);
-  }
-  Serial.println();
+  // start path to LD2410
+  // radar.debug(Serial);  // enable debug output to console
+  Serial2.begin(256000, SERIAL_8N1, _rxPin, _txPin); // UART for monitoring the radar rx, tx  
 
 
- // Start LD2410 Sensor
-  radar.debug(Serial); 
+//  // Start LD2410 Sensor
+//   radar.debug(Serial); 
 
-  if (radar.begin(gpsSerial)) {
+  if (radar.begin(Serial2)) {
     Homie.getLogger() << "Sensor Initialized..." << endl;
     delay(500);
     radar.requestStartEngineeringMode();
@@ -68,17 +61,17 @@ void LD2410Client::setup() {
  * Called by Homie when homie is connected and in run mode
 */
 void LD2410Client::loop() {
-  gpsSerial.listen();
+  // Serial2.listen();
 
-  radar.ld2410_loop();
-
-  if (radar.isConnected() && millis() - _lastReading > 1000) // Report every 1000ms
-  {
-    _lastReading = millis();
-    if (gpsSerial.available()) {
-      Serial.print(buildWithAlarmSerialStudioCSV());
+  // radar.ld2410_loop();
+  
+  // if (radar.isConnected() && millis() - _lastReading > 1000) // Report every 1000ms
+  // {
+  //   _lastReading = millis();
+    // if (Serial2.available()) {
+    //   Serial.print(buildWithAlarmSerialStudioCSV());
       
-    }
+    // }
     if (_motion != (digitalRead(_ioPin) ? true : false)) {
       _motion = (digitalRead(_ioPin) ? true : false);
       if (_motion) {
@@ -95,8 +88,8 @@ void LD2410Client::loop() {
         setProperty(cProperty).setRetained(true).send("OFF");
       }
     }
-  }
-  commandHandler();
+  // }
+  // commandHandler();
 }
 
 // clang-format off
