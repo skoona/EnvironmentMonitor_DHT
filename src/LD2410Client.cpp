@@ -4,13 +4,12 @@
  */
 #include "LD2410Client.hpp"
 
-LD2410Client::LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin, const bool enableReporting, const bool engineeringMode)
+LD2410Client::LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin, const bool enableReporting)
     : HomieNode(id, name, nType, false, 0U, 0U),
     _rxPin(rxPin),
     _txPin(txPin),
     _ioPin(ioPin),
-    _reporting_enabled(enableReporting),
-    _engineering_mode(engineeringMode)
+    _reporting_enabled(enableReporting)
 {
   // Start up the library
   pinMode(_ioPin, INPUT);

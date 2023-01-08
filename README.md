@@ -5,7 +5,14 @@
 
 HomieNode V3 featuring:
 - DHT Temperature Class, using HomeNode with auto detect sensor of DHT11, DHT22, AM2302, RHT03.
-- RCWL-0516 Doppler Radar Microwave Motion Class, using HomieNode.
+- LD2410 mmWave Radar Motion Class, using HomieNode.
+
+Pin Out for ESP32
+- #define PIN_DHT  4
+- #define LD_IO   18
+- #define LD_RX   16
+- #define LD_TX   17
+
 
 ### Homie Config
 
@@ -31,7 +38,10 @@ HomieNode V3 featuring:
   },
   "settings": {
       "sensorInterval": 900,
-      "motionHoldInterval": 60
+      "targetReportingInterval": 60000,
+      "broadcastInterval": 30000,
+      "engineeringMode": true,
+		  "dhtType": 1 
     }
 }
 ```
@@ -39,24 +49,23 @@ HomieNode V3 featuring:
 
 ### Home MQTT Log
 ```
-sknSensors/HomeOffice/$state lost
 sknSensors/HomeOffice/$state init
 sknSensors/HomeOffice/$homie 3.0.1
 sknSensors/HomeOffice/$name Home Office
-sknSensors/HomeOffice/$mac 84:F3:EB:B7:55:D5
-sknSensors/HomeOffice/$localip 10.100.1.161
-sknSensors/HomeOffice/$nodes Ambient,Presence
+sknSensors/HomeOffice/$mac 24:0A:C4:59:42:54
+sknSensors/HomeOffice/$localip 10.100.1.244
+sknSensors/HomeOffice/$nodes Ambient,Occupancy
 sknSensors/HomeOffice/$stats uptime
-sknSensors/HomeOffice/$stats/interval 905
-sknSensors/HomeOffice/$fw/name Environment-DHT-RCWL0516
-sknSensors/HomeOffice/$fw/version 1.0.0
-sknSensors/HomeOffice/$fw/checksum 66625e09720864223f16f3dec17b570d
-sknSensors/HomeOffice/$implementation esp8266
-sknSensors/HomeOffice/$implementation/config {"name":"Home Office","device_id":"HomeOffice","device_stats_interval":900,"wifi":{"ssid":"SFNSS1-24G"},"mqtt":{"host":"openhab.skoona.net","port":1883,"base_topic":"sknSensors/","auth":true},"ota":{"enabled":true},"settings":{"sensorsInterval":900}}
+sknSensors/HomeOffice/$stats/interval 185
+sknSensors/HomeOffice/$fw/name MultiSensor
+sknSensors/HomeOffice/$fw/version 3.0.1
+sknSensors/HomeOffice/$fw/checksum ed1a289e4f7a38e730cc202a8bc4004b
+sknSensors/HomeOffice/$implementation esp32
+sknSensors/HomeOffice/$implementation/config {"name":"Home Office","device_id":"HomeOffice","device_stats_interval":180,"wifi":{"ssid":"SFNSS1-24G"},"mqtt":{"host":"openhabianpi.local.skoona.net","port":1883,"base_topic":"sknSensors/","auth":true},"ota":{"enabled":true},"settings":{"sensorInterval":900,"targetReportingInterval":60000,"broadcastInterval":60000,"dhtType":2}}
 sknSensors/HomeOffice/$implementation/version 3.0.0
 sknSensors/HomeOffice/$implementation/ota/enabled true
-sknSensors/HomeOffice/Ambient/$name DHT Temperature and Humidity Sensor
-sknSensors/HomeOffice/Ambient/$type sensor
+sknSensors/HomeOffice/Ambient/$name Temperature and Humidity Sensor
+sknSensors/HomeOffice/Ambient/$type Sensor
 sknSensors/HomeOffice/Ambient/$properties humidity,temperature
 sknSensors/HomeOffice/Ambient/humidity/$name Humidity
 sknSensors/HomeOffice/Ambient/humidity/$datatype float
@@ -64,19 +73,30 @@ sknSensors/HomeOffice/Ambient/humidity/$unit %rH
 sknSensors/HomeOffice/Ambient/temperature/$name Temperature
 sknSensors/HomeOffice/Ambient/temperature/$datatype float
 sknSensors/HomeOffice/Ambient/temperature/$unit °F
-sknSensors/HomeOffice/Presence/$name RCWL-0516 Motion Sensor
-sknSensors/HomeOffice/Presence/$type sensor
-sknSensors/HomeOffice/Presence/$properties motion
-sknSensors/HomeOffice/Presence/motion/$name Motion
-sknSensors/HomeOffice/Presence/motion/$datatype enum
-sknSensors/HomeOffice/Presence/motion/$format OPEN,CLOSED
+sknSensors/HomeOffice/Occupancy/$name Occupancy and Motion Sensor
+sknSensors/HomeOffice/Occupancy/$type Sensor
+sknSensors/HomeOffice/Occupancy/$properties motion,occupancy,system
+sknSensors/HomeOffice/Occupancy/motion/$name Motion
+sknSensors/HomeOffice/Occupancy/motion/$datatype enum
+sknSensors/HomeOffice/Occupancy/motion/$format ON,OFF
+sknSensors/HomeOffice/Occupancy/occupancy/$name Occupancy
+sknSensors/HomeOffice/Occupancy/occupancy/$datatype json
+sknSensors/HomeOffice/Occupancy/system/$name Command Handler
+sknSensors/HomeOffice/Occupancy/system/$settable true
+sknSensors/HomeOffice/Occupancy/system/$datatype string
 sknSensors/HomeOffice/$state ready
-sknSensors/HomeOffice/Ambient/temperature 77.18
-sknSensors/HomeOffice/Ambient/humidity 29.00
-sknSensors/HomeOffice/$stats/interval 905
-sknSensors/HomeOffice/$stats/signal 64
-sknSensors/HomeOffice/$stats/uptime 6
+sknSensors/HomeOffice/$stats/interval 185
+sknSensors/HomeOffice/$stats/signal 84
+sknSensors/HomeOffice/$stats/uptime 4
+sknSensors/HomeOffice/$stats/freeheap 220336
 
+sknSensors/HomeOffice/Occupancy/system/set 5
+sknSensors/HomeOffice/Occupancy/system {"ReadConfigResponse":{"success":true,"message":"Device online","data":{"cfgMaxGate":8,"cfgMaxMovingGate":8,"cfgMaxStationaryGate":8,"cfgSensorIdleTimeInSeconds":15000,"gateConfig":{"0":{"cfgMovingGateSensitivity":50,"cfgStationaryGateSensitivity":0},"1":{"cfgMovingGateSensitivity":50,"cfgStationaryGateSensitivity":0},"2":{"cfgMovingGateSensitivity":40,"cfgStationaryGateSensitivity":40},"3":{"cfgMovingGateSensitivity":30,"cfgStationaryGateSensitivity":40},"4":{"cfgMovingGateSensitivity":20,"cfgStationaryGateSensitivity":30},"5":{"cfgMovingGateSensitivity":15,"cfgStationaryGateSensitivity":30},"6":{"cfgMovingGateSensitivity":15,"cfgStationaryGateSensitivity":20},"7":{"cfgMovingGateSensitivity":15,"cfgStationaryGateSensitivity":20}}}}}
 
+sknSensors/HomeOffice/Occupancy/system/set 4
+sknSensors/HomeOffice/Occupancy/system {"ReadResponse":{"success":true,"message":"Presence not detected","data":{}}}
+
+sknSensors/HomeOffice/Occupancy/occupancy {"OccupancyTarget":{"unitOfMeasure":"feet","triggeredBy":"Not Present","detectionDistance":"0.0","movingTargetDistance":"0.0","movingTargetEnergy":0,"stationaryTargetDistance":"0.0","stationaryTargetEnergy":8}}
+sknSensors/HomeOffice/Occupancy/motion OFF
 
 ```

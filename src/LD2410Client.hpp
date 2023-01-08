@@ -23,7 +23,7 @@
 class LD2410Client : public HomieNode {
 
 public:
-  LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin, const bool enableReporting = false, const bool engineeringMode= false);
+  LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin, const bool enableReporting = false);
 
   void setTargetReportingInterval(unsigned long interval) { _targetReportingInterval = interval; }
   unsigned long getTargetReportingInterval() const { return _targetReportingInterval; }
@@ -31,6 +31,8 @@ public:
   unsigned long getBroadcastInterval() const { return _broadcastInterval; }
   void setTargetReporting(bool enabled) { _reporting_enabled = enabled; }
   bool isTargetReportingEnabled() const { return _reporting_enabled; }
+  void setEngineeringModeTargetReporting(bool enabled) { _engineering_mode = enabled; if(_engineering_mode) {radar.requestStartEngineeringMode();} }
+  bool isEngineeringModeTargetReporting() const { return _engineering_mode; }
 
   
 protected:
