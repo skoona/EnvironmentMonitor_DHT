@@ -10,6 +10,7 @@
 
 #include <Homie.hpp>
 #include <ld2410.h>
+#include <ArduinoJson.h>
 
 #define LD_CMD_OK "0"
 #define LD_CMD_OKNL "0\n"
@@ -31,19 +32,20 @@ public:
   void setTargetReporting(bool enabled) { _reporting_enabled = enabled; }
   bool isTargetReportingEnabled() const { return _reporting_enabled; }
 
+  
 protected:
   virtual void setup() override;
   virtual void loop() override;
   virtual void onReadyToOperate() override;
   virtual bool handleInput(const HomieRange &range, const String &property, const String &value);
 
-  const char * triggeredby();
-  String availableCommands();
   void   commandHandler();
-  String commandProcessor(String &cmdStr);
   String processTargetData();
-  String processTargetReportingData();
-  String processEngineeringReportData();
+  DynamicJsonDocument jsonAvailableCommands();
+  DynamicJsonDocument jsonCommandProcessor(String &cmdStr);
+  DynamicJsonDocument processTargetReportingData();
+  DynamicJsonDocument processEngineeringReportData();
+  const char * triggeredby();
 
 private:
   const char *cCaption = "LD2410 mmWave Radar Motion Sensor:";

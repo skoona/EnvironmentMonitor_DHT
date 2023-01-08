@@ -25,8 +25,8 @@ extern "C"
  * ex: sknSensors/deviceName/DHT_0/temperature -> 72.3 degress
  * Note: HomieNode(...range,lower,upper) manages this array suffix change; i.e no more name fixups
 */
-#define SKN_MOD_NAME "Monitor-DHT-mmWave-Metrics"
-#define SKN_MOD_VERSION "3.0.0"
+#define SKN_MOD_NAME "MultiSensor"
+#define SKN_MOD_VERSION "3.0.1"
 #define SKN_MOD_BRAND "SknSensors"
 
 #define SKN_TNODE_TITLE "Temperature and Humidity Sensor"
@@ -39,11 +39,11 @@ extern "C"
 #define SKN_MNODE_ID "Occupancy"
 
 // Select pins for Temperature and Motion
-#define PIN_DHT  15
-#define LD_IO 5                  
-#define LD_RX 16 
-#define LD_TX 17 
-#define DHT_TYPE DHTesp::DHT_MODEL_t::DHT22 // DHTesp::DHT22
+#define PIN_DHT  4         // D4  4
+#define LD_IO   18         // D18        
+#define LD_RX   16         // D6
+#define LD_TX   17         // D7
+#define DHT_TYPE DHTesp::DHT_MODEL_t::DHT11 // DHTesp::DHT22
 
 #define SENSOR_READ_INTERVAL 300
 #define LD2410_TARGET_REPORTING true   // enables status property

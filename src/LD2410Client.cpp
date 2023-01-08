@@ -27,8 +27,10 @@ bool LD2410Client::handleInput(const HomieRange &range, const String &property, 
     if (property.equalsIgnoreCase(cPropertyCommand))
     {
       String _value = value;
-      String _response =commandProcessor( _value );
-       Homie.getLogger() << cIndent
+      String _response;
+
+      serializeJson(jsonCommandProcessor( _value ), _response);
+      Homie.getLogger() << cIndent
                         << F("✖Command Response: ") << value << "\n"
                         << _response
                         << endl;
@@ -132,113 +134,189 @@ void LD2410Client::loop() {
 
 // clang-format off
 /*
- * Available Commands */
-String LD2410Client::availableCommands() {
-  String sCmd = "";
-  sCmd += "\nNode: ";
-  sCmd += cCaption;
-  sCmd += "\nSupported commands:";
-  sCmd += "\n\t( 1) help:         this text.";
-  sCmd += "\n\t( 2) streamstart:  start sending udp data to SerialStudio.";
-  sCmd += "\n\t( 3) streamstop:   stop sending to SerialStream.";
-  sCmd += "\n\t( 4) read:         read current values from the sensor";
-  sCmd += "\n\t( 5) readconfig:   read the configuration from the sensor";
-  sCmd += "\n\t( 6) setmaxvalues   <motion gate> <stationary gate> <inactivitytimer> (2-8) (0-65535)seconds";
-  sCmd += "\n\t( 7) setsensitivity <gate> <motionsensitivity> <stationarysensitivity> (2-8|255) (0-100)";
-  sCmd += "\n\t( 8) restart:      restart the sensor";
-  sCmd += "\n\t( 9) readversion:  read firmware version";
-  sCmd += "\n\t(10) factoryreset: factory reset the sensor";
-  sCmd += "\n\t(11) deviceinfo:   LD2410 device info";
-  sCmd += "\n\t(12) reboot:       reboot hosting micro-controller\n";
+ * Available Commands 
+ * [
+ *   { 
+ *     id: 1,
+ *     cmd: "help",
+ *     description: "list of available commands"
+ *   },...
+ * ]
+ */
+DynamicJsonDocument LD2410Client::jsonAvailableCommands() {
+  DynamicJsonDocument doc(1024);
+  JsonArray jCmd = doc.createNestedArray("Commands");
 
-  return sCmd;
+  JsonObject item = jCmd.createNestedObject();
+  item["id"] = 1;
+  item["command"]= "help";
+  item["description"] = "this text";
+
+  JsonObject item2 = jCmd.createNestedObject();
+  item2["id"] = 2;
+  item2["command"]= "streamstart";
+  item2["description"] = "start sending udp data to SerialStudio.";
+
+  JsonObject item3 = jCmd.createNestedObject();
+  item3["id"] = 3;
+  item3["command"]= "streamstop";
+  item3["description"] = "stop sending to SerialStream.";
+
+  JsonObject item4 = jCmd.createNestedObject();
+  item4["id"] = 4;
+  item4["command"]= "read";
+  item4["description"] = "read current values from the sensor";
+
+  JsonObject item5 = jCmd.createNestedObject();
+  item5["id"] = 5;
+  item5["command"]= "readconfig";
+  item5["description"] = "read the configuration from the sensor";
+
+  JsonObject item6 = jCmd.createNestedObject();
+  item6["id"] = 6;
+  item6["command"]= "setmaxvalues";
+  item6["param1"]="<motion gate> (2-8)";
+  item6["param2"]="<stationary gate> (2-8)";
+  item6["param3"]="<inactivitytimer> (0-65535 seconds)";
+  item6["description"] = "sets distance sensitivity and idle hold timer";
+
+  JsonObject item7 = jCmd.createNestedObject();
+  item7["id"] = 7;
+  item7["command"]= "setsensitivity";
+  item7["param1"]="<gate> (2-8|255)";
+  item7["param2"]="<motionsensitivity> (0-100)";
+  item7["param3"]="<stationarysensitivity> (0-100)";
+  item7["description"] = "set sensitivity for individual motion and stationary gate pairs, or all if gate=255";
+
+  JsonObject item8 = jCmd.createNestedObject();
+  item8["id"] = 8;
+  item8["command"]= "restart";
+  item8["description"] = "restart the sensor";
+
+  JsonObject item9 = jCmd.createNestedObject();
+  item9["id"] = 9;
+  item9["command"]= "readversion";
+  item9["description"] = "read firmware version";
+
+  JsonObject item10 = jCmd.createNestedObject();
+  item10["id"] = 10;
+  item10["command"]= "factoryreset";
+  item10["description"] = "factory reset the sensor";
+
+  JsonObject item11 = jCmd.createNestedObject();
+  item11["id"] = 11;
+  item11["command"]= "deviceinfo";
+  item11["description"] = "LD2410 device info";
+
+  JsonObject item12 = jCmd.createNestedObject();
+  item12["id"] = 12;
+  item12["command"]= "reboot";
+  item12["description"] = "reboot hosting micro-controller";
+
+  return doc;
 }
+
+
 // clang-format on
 
+
 /*
- * Command Processor
+ * JSON Command Processor
  * - there are two commands not implemented here
  * - requestConfigurationModeBegin()
  * - requestConfigurationModeEnd()
  * Otherwise all commands are available as options
  */
-String LD2410Client::commandProcessor(String &cmdStr) {
-  String sBuf = "";
+DynamicJsonDocument LD2410Client::jsonCommandProcessor(String &cmdStr) {
+  DynamicJsonDocument jCMD(1024);
   int iCmd = cmdStr.toInt();
   cmdStr.trim();
 
   if (cmdStr.equals("help") || iCmd == 1) {
-    sBuf += LD_CMD_OKNL;
-    sBuf += availableCommands();
+    JsonObject response = jCMD.createNestedObject("HelpResponse");
+    response["success"] = true; 
+    response["message"] = "Device online";
+    response["data"] = jsonAvailableCommands();
+
   } else if (cmdStr.equals("streamstart") || iCmd == 2) {
     _reporting_enabled = true;
-    sBuf += LD_CMD_OK;
+    JsonObject response = jCMD.createNestedObject("StreamStartResponse");
+    response["success"] = true; 
+    response["message"] = "Device online";
+    JsonObject data = response.createNestedObject("data");
+
   } else if (cmdStr.equals("streamstop") || iCmd == 3) {
     _reporting_enabled = false;
-    sBuf += LD_CMD_OK;
+    JsonObject response = jCMD.createNestedObject("StreamStopResponse");
+    response["success"] = true; 
+    response["message"] = "Device online";
+    JsonObject data = response.createNestedObject("data");
+
   } else if (cmdStr.equals("read") || iCmd == 4) {
+    JsonObject response = jCMD.createNestedObject("ReadResponse");
     if (radar.isConnected()) {
-      sBuf += LD_CMD_OKNL;
+      response["success"] = true; 
+      response["message"] = "Device online";
       if (radar.presenceDetected()) {
-        if (radar.stationaryTargetDetected()) {
-          sBuf += "Stationary target: ";
-          sBuf += radar.stationaryTargetDistance();
-          sBuf += " cm energy: ";
-          sBuf += radar.stationaryTargetEnergy();
-          sBuf += " dBZ\n";
-        }
-        if (radar.movingTargetDetected()) {
-          sBuf += "Moving target: ";
-          sBuf += radar.movingTargetDistance();
-          sBuf += " cm energy: ";
-          sBuf += radar.movingTargetEnergy();
-          sBuf += " dBZ\n";
-        }
-        if (!radar.stationaryTargetDetected() &&
-            !radar.movingTargetDetected()) {
-          sBuf += "No Detection, in Idle Hold window of: ";
-          sBuf += radar.cfgSensorIdleTimeInSeconds();
-          sBuf += " seconds\n";
+        response["message"] = "Presence Detected";
+        JsonObject item = response.createNestedObject("data");
+        if (radar.stationaryTargetDetected() &&
+            radar.movingTargetDetected()) {
+          item["unitOfMeasure"] = "feet";
+          item["target"] = "Stationary and Moving";
+         
+          item["stationaryTargetDistance"] = String((radar.stationaryTargetDistance() * CM_TO_FEET_FACTOR), 1);
+          item["stationaryTargetEnergy"] = radar.stationaryTargetEnergy();
+          item["movingTargetDistance"] =  String((radar.movingTargetDistance() * CM_TO_FEET_FACTOR), 1);
+          item["movingTargetEnergy"] = radar.movingTargetEnergy();
+
+        } else if (radar.stationaryTargetDetected()) {
+          item["target"] = "Stationary";
+          item["stationaryTargetDistance"] = String((radar.stationaryTargetDistance() * CM_TO_FEET_FACTOR), 1);
+          item["stationaryTargetEnergy"] = radar.stationaryTargetEnergy();
+
+        } else if (radar.movingTargetDetected()) {
+          item["target"] = "Moving";
+          item["movingTargetDistance"] = String((radar.movingTargetDistance() * CM_TO_FEET_FACTOR), 1);
+          item["movingTargetEnergy"] = radar.movingTargetEnergy();
         }
       } else {
-        sBuf += LD_CMD_OK;
+        response["message"] = "Presence not detected";
+        JsonObject data = response.createNestedObject("data");
       }
     } else {
-      sBuf += LD_CMD_FAIL;
+      response["success"] = false; 
+      response["message"] = "Device offline";
+      JsonObject data = response.createNestedObject("data");
     }
   } else if (cmdStr.equals("readconfig") || iCmd == 5) {
+     JsonObject response = jCMD.createNestedObject("ReadConfigResponse");
     if (radar.requestCurrentConfiguration()) {
-      sBuf += LD_CMD_OKNL;
-      sBuf += "Maximum gate ID: ";
-      sBuf += radar.cfgMaxGate();
-      sBuf += "\n";
-      sBuf += "Maximum gate for moving targets: ";
-      sBuf += radar.cfgMaxMovingGate();
-      sBuf += "\n";
-      sBuf += "Maximum gate for stationary targets: ";
-      sBuf += radar.cfgMaxStationaryGate();
-      sBuf += "\n";
-      sBuf += "Idle time for targets: ";
-      sBuf += radar.cfgSensorIdleTimeInSeconds();
-      sBuf += "s\n";
-      sBuf += "Gate sensitivity\n";
+      response["success"] = true; 
+      response["message"] = "Device online";
 
-      for (uint8_t gate = 0; gate < LD2410_MAX_GATES; gate++) {
-        sBuf += "Gate ";
-        sBuf += gate;
-        sBuf += " moving targets: ";
-        sBuf += radar.cfgMovingGateSensitivity(gate);
-        sBuf += " dBZ stationary targets: ";
-        sBuf += radar.cfgStationaryGateSensitivity(gate);
-        sBuf += " dBZ\n";
+      JsonObject item = response.createNestedObject("data");
+      item["cfgMaxGate"] = radar.cfgMaxGate();
+      item["cfgMaxMovingGate"] = radar.cfgMaxMovingGate();
+      item["cfgMaxStationaryGate"] = radar.cfgMaxStationaryGate();
+      item["cfgSensorIdleTimeInSeconds"] = radar.cfgSensorIdleTimeInSeconds();
+      
+      JsonObject cfg = item.createNestedObject("gateConfig");
+      for (uint8_t gate = 0; gate < radar.cfgMaxGate(); gate++) {
+         JsonObject jEle = cfg.createNestedObject(String(gate));   
+         jEle["cfgMovingGateSensitivity"] = radar.cfgMovingGateSensitivity(gate);
+         jEle["cfgStationaryGateSensitivity"] = radar.cfgStationaryGateSensitivity(gate);
       }
     } else {
-      sBuf += LD_CMD_FAIL;
+      response["success"] = false; 
+      response["message"] = "execution failure";
+      JsonObject data = response.createNestedObject("data");
     }
   } else if (cmdStr.startsWith("setmaxvalues") || iCmd == 6) {
     uint8_t firstSpace = cmdStr.indexOf(' ');
     uint8_t secondSpace = cmdStr.indexOf(' ', firstSpace + 1);
     uint8_t thirdSpace = cmdStr.indexOf(' ', secondSpace + 1);
+    JsonObject response = jCMD.createNestedObject("SetMaxValuesResponse");
 
     uint8_t newMovingMaxDistance =
         (cmdStr.substring(firstSpace, secondSpace)).toInt();
@@ -250,25 +328,32 @@ String LD2410Client::commandProcessor(String &cmdStr) {
     if (newMovingMaxDistance > 0 && newStationaryMaxDistance > 0 &&
         newMovingMaxDistance <= 8 && newStationaryMaxDistance <= 8) {
       if (radar.setMaxValues(newMovingMaxDistance, newStationaryMaxDistance,inactivityTimer)) {
+        response["message"] = "Device online";
         if (radar.requestRestart()) {
           delay(1500);
           if(radar.isEngineeringMode()) {
             radar.requestStartEngineeringMode();
           }
-          sBuf += LD_CMD_OK;
+          response["success"] = true; 
         } else {
-          sBuf += LD_CMD_FAIL;
+          response["success"] = false; 
+          response["message"] = "restart cmd failure";
         }
       } else {
-        sBuf += LD_CMD_FAIL;
+        response["success"] = false; 
+        response["message"] = "command failure";
       }
     } else {
-        sBuf += LD_CMD_FAIL;
+        response["success"] = false; 
+        response["message"] = "invalid param failure";
     }
+    JsonObject data = response.createNestedObject("data");
+    
   } else if (cmdStr.startsWith("setsensitivity") || iCmd == 7) {
     uint8_t firstSpace = cmdStr.indexOf(' ');
     uint8_t secondSpace = cmdStr.indexOf(' ', firstSpace + 1);
     uint8_t thirdSpace = cmdStr.indexOf(' ', secondSpace + 1);
+    JsonObject response = jCMD.createNestedObject("SetSensitivityResponse");
 
     uint8_t gate = (cmdStr.substring(firstSpace, secondSpace)).toInt();
     uint8_t motionSensitivity =
@@ -287,66 +372,88 @@ String LD2410Client::commandProcessor(String &cmdStr) {
           if(radar.isEngineeringMode()) {
             radar.requestStartEngineeringMode();
           }
-          sBuf += LD_CMD_OK;
+          response["success"] = true; 
+          response["message"] = "Device online";
         } else {
-          sBuf += LD_CMD_FAIL;
+          response["success"] = false; 
+          response["message"] = "device restart failed";
         }
       } else {
-        sBuf += LD_CMD_FAIL;
+        response["success"] = false; 
+        response["message"] = "command execution failed";
       }
     } else {
-      sBuf += LD_CMD_FAIL;
+      response["success"] = false; 
+      response["message"] = "invalid command params";
     }
+    JsonObject data = response.createNestedObject("data");
+
   } else if (cmdStr.equals("restart") || iCmd == 8) {
+    JsonObject response = jCMD.createNestedObject("RestartResponse");
     if (radar.requestRestart()) {
       delay(1500);
       if(radar.isEngineeringMode()) {
         radar.requestStartEngineeringMode();
       }
-      sBuf += LD_CMD_OK;
+      response["success"] = true; 
+      response["message"] = "Device online";
     } else {
-      sBuf += LD_CMD_FAIL;
+      response["success"] = false; 
+      response["message"] = "device restart failed";
     }
+    JsonObject data = response.createNestedObject("data");
+
   } else if (cmdStr.equals("readversion") || iCmd == 9) {
+    JsonObject response = jCMD.createNestedObject("ReadVersionResponse");
+    JsonObject data = response.createNestedObject("data");
     if (radar.requestFirmwareVersion()) {
-      sBuf += LD_CMD_OKNL;
-      sBuf += radar.cmdFirmwareVersion();
+      response["success"] = true; 
+      response["message"] = "Device online";
+      data["cmdFirmwareVersion"] = radar.cmdFirmwareVersion();
     } else {
-      sBuf += LD_CMD_FAIL;
+      response["success"] = false; 
+      response["message"] = "command execution failed";
     }
+
   } else if (cmdStr.equals("factoryreset") || iCmd == 10) {
+    JsonObject response = jCMD.createNestedObject("FactoryResetResponse");
+    JsonObject data = response.createNestedObject("data");
     if (radar.requestFactoryReset()) {
-      sBuf += LD_CMD_OK;      
+      response["success"] = true; 
+      response["message"] = "Device online";
     } else {
-      sBuf += LD_CMD_FAIL;
+      response["success"] = false; 
+      response["message"] = "command execution failed";
     }
+
   } else if (cmdStr.equals("deviceinfo") || iCmd == 11) {
-    sBuf += LD_CMD_OKNL;
-    radar.requestFirmwareVersion();
-    sBuf += "\n\tData reporting mode: ";
-    sBuf += (radar.isEngineeringMode() ? "Engineering Mode" : "Target Mode");
-    sBuf += "\n\tCommunication protocol version: v";
-    sBuf += radar.cmdProtocolVersion();
-    sBuf += ".0\n\tCommunications Buffer Size: ";
-    sBuf += radar.cmdCommunicationBufferSize();
-    sBuf += " bytes\n\tDevice firmare version: ";
-    sBuf += radar.cmdFirmwareVersion();
-    sBuf += "\tEngineering retain data value: ";
-    sBuf += radar.engRetainDataValue();
-    sBuf += "\n";
+    JsonObject response = jCMD.createNestedObject("DeviceInfoResponse");
+    JsonObject data = response.createNestedObject("data");
+    
+    response["success"] = true; 
+    response["message"] = "Device online";
+    data["requestFirmwareVersion"] = radar.requestFirmwareVersion();
+    data["isEngineeringMode"] = radar.isEngineeringMode();
+    data["cmdProtocolVersion"] = radar.cmdProtocolVersion();
+    data["cmdCommunicationBufferSize"] = radar.cmdCommunicationBufferSize();
+    data["cmdFirmwareVersion"] = radar.cmdFirmwareVersion();
+    data["engRetainDataValue"] = radar.engRetainDataValue();
+    
   } else if (cmdStr.equals("reboot") || iCmd == 12) {
     esp_restart();
   } else {
-    sBuf += LD_CMD_FAILNL;
-    sBuf += "Unknown command: ";
-    sBuf += cmdStr;
-    sBuf += "\n";
+    JsonObject response = jCMD.createNestedObject("UnknownResponse");
+    JsonObject data = response.createNestedObject("data");
+    
+    response["success"] = false; 
+    response["message"] = "Unknown command";
   }
 
   cmdStr.clear();
 
-  return sBuf;
+  return jCMD;
 }
+
 
 /*
  * Accepts Serial chars and process chars as a command
@@ -356,7 +463,7 @@ void LD2410Client::commandHandler() {
   if (Serial.available()) {
     char typedCharacter = Serial.read();
     if (typedCharacter == '\n') {
-      Serial.print(commandProcessor(command));
+      serializeJsonPretty(jsonCommandProcessor( command ), Serial);
     } else {
       Serial.print(typedCharacter);
       if (typedCharacter != '\r') { // effectively ignore CRs
@@ -385,52 +492,59 @@ const char * LD2410Client::triggeredby() {
 }
 
 String LD2410Client::processTargetData() {
+  String strOut;
   if(radar.isEngineeringMode()) {
-    return processEngineeringReportData();
+    serializeJson(processEngineeringReportData(), strOut);
   } else {
-    return processTargetReportingData();
+    serializeJson(processTargetReportingData(), strOut);
   }
+  return strOut;
 }
 
 /*
  * Basic Target Reporting Data
 */
-String LD2410Client::processTargetReportingData() {
-  uint32_t pos = 0;
-  pos = snprintf(serialBuffer, sizeof(serialBuffer),
-                 "{\"%s\":{\"unitOfMeasure\":\"feet\",\"triggeredBy\":\"%s\",\"detectionDistance\":%3.1f,\"movingTargetDistance\":%3.1f,\"movingTargetEnergy\":%d,\"stationaryTargetDistance\":%3.1f,\"stationaryTargetEnergy\":%d}}", 
-                 LD_OCCUPANCY_TARGET_JSON, triggeredby(),
-                 (radar.detectionDistance() * CM_TO_FEET_FACTOR),
-                 (radar.movingTargetDistance() * CM_TO_FEET_FACTOR) , radar.movingTargetEnergy(),
-                 (radar.stationaryTargetDistance() * CM_TO_FEET_FACTOR), radar.stationaryTargetEnergy() );
+DynamicJsonDocument LD2410Client::processTargetReportingData() {
+  DynamicJsonDocument jResponse(256);
 
-  return String(serialBuffer);
+  JsonObject item = jResponse.createNestedObject(LD_OCCUPANCY_TARGET_JSON);
+  item["unitOfMeasure"] = "feet";
+  item["triggeredBy"] = triggeredby();
+  item["detectionDistance"] = String((radar.detectionDistance() * CM_TO_FEET_FACTOR), 1);
+  item["movingTargetDistance"] = String((radar.movingTargetDistance() * CM_TO_FEET_FACTOR),1);
+  item["movingTargetEnergy"] = radar.movingTargetEnergy();
+  item["stationaryTargetDistance"] = String((radar.stationaryTargetDistance() * CM_TO_FEET_FACTOR), 1);
+  item["stationaryTargetEnergy"] = radar.stationaryTargetEnergy();
+  
+  return jResponse;
 }
 
 /*
  * Engineering level Rreporting Data
 */
-String LD2410Client::processEngineeringReportData() {
-  uint32_t pos = 0;
-  uint32_t pos1 = 0;
-  pos = snprintf(serialBuffer, sizeof(serialBuffer),
-                 "{\"%s\":{\"unitOfMeasure\":\"feet\",\"triggeredBy\":\"%s\",\"detectionDistance\":%3.1f,\"movingTargetDistance\":%3.1f,\"movingTargetEnergy\":%d,\"stationaryTargetDistance\":%3.1f,\"stationaryTargetEnergy\":%d,\"maxMovingDistanceGate\":%d,\"maxStaticDistanceGate\":%d,\"gates\":{", 
-                 LD_OCCUPANCY_ENGINEERING_JSON, triggeredby(),
-                 (radar.detectionDistance() * CM_TO_FEET_FACTOR),
-                 (radar.movingTargetDistance() * CM_TO_FEET_FACTOR) , radar.movingTargetEnergy(),
-                 (radar.stationaryTargetDistance() * CM_TO_FEET_FACTOR), radar.stationaryTargetEnergy(),
-                 radar.engMaxMovingDistanceGate(), radar.engMaxStaticDistanceGate());
+DynamicJsonDocument LD2410Client::processEngineeringReportData() {
+  DynamicJsonDocument jResponse(756);
 
-  for (int x = 0; x < LD2410_MAX_GATES; ++x) {
-    pos1 = snprintf(buffer1, sizeof(buffer1), "\"%d\":{\"movingDistanceGateEnergy\":%d,\"StaticDistanceGateEnergy\":%d},", 
-                    x,
-                    radar.engMovingDistanceGateEnergy(x),
-                    radar.engStaticDistanceGateEnergy(x));
-    
-    strcat(serialBuffer, buffer1);
+  JsonObject item = jResponse.createNestedObject(LD_OCCUPANCY_ENGINEERING_JSON);
+  item["unitOfMeasure"]             = "feet";
+  item["triggeredBy"]               = triggeredby();
+  item["detectionDistance"]         = String((radar.detectionDistance() * CM_TO_FEET_FACTOR), 1);
+  item["movingTargetDistance"]      = String((radar.movingTargetDistance() * CM_TO_FEET_FACTOR), 1);
+  item["movingTargetEnergy"]        = radar.movingTargetEnergy();
+  item["stationaryTargetDistance"]  = String((radar.stationaryTargetDistance() * CM_TO_FEET_FACTOR), 1);
+  item["stationaryTargetEnergy"]    = radar.stationaryTargetEnergy();
+  item["maxMovingDistanceGate"]     = radar.engMaxMovingDistanceGate();
+  item["maxStationaryDistanceGate"] = radar.engMaxStaticDistanceGate();
+
+  JsonObject jGates = item.createNestedObject("gates");
+
+  for (int x = 0; x < radar.cfgMaxGate(); ++x) {
+    JsonObject gate = jGates.createNestedObject(String(x));    
+    gate["movingDistanceGateEnergy"]     = radar.engMovingDistanceGateEnergy(x);
+    gate["movingSensitivity"]            = radar.cfgMovingGateSensitivity(x);
+    gate["StationaryDistanceGateEnergy"] = radar.engStaticDistanceGateEnergy(x);
+    gate["StationarySensitivity"]        = radar.cfgStationaryGateSensitivity(x);
   }
-  serialBuffer[(strlen(serialBuffer) -1)]=' '; 
-  strcat(serialBuffer, "}}}");
 
-  return String(serialBuffer);
+  return jResponse;
 }
