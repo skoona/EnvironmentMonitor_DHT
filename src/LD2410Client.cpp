@@ -431,8 +431,10 @@ DynamicJsonDocument LD2410Client::jsonCommandProcessor(String &cmdStr) {
     JsonObject data = response.createNestedObject("data");
     
     response["success"] = true; 
+    if(!radar.requestFirmwareVersion()) {
+      response["success"] = true; 
+    }
     response["message"] = "Device online";
-    data["requestFirmwareVersion"] = radar.requestFirmwareVersion();
     data["isEngineeringMode"] = radar.isEngineeringMode();
     data["cmdProtocolVersion"] = radar.cmdProtocolVersion();
     data["cmdCommunicationBufferSize"] = radar.cmdCommunicationBufferSize();
