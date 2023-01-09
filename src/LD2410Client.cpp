@@ -119,7 +119,7 @@ void LD2410Client::loop() {
                           << F("✖ Occupanncy Detected: ON ")
                           << endl;
       setProperty(cPropertyMotion).setRetained(true).send("ON");
-      setProperty(cPropertyOccupancy).setRetained(true).send("PN");
+      setProperty(cPropertyOccupancy).setRetained(true).send("ON");
 
     } else {    
       if (radar.isMoving()) {
@@ -137,7 +137,7 @@ void LD2410Client::loop() {
         Homie.getLogger() << cIndent
                           << F("✖ Occupanncy Detected: ON ")
                           << endl;
-        setProperty(cPropertyOccupancy).setRetained(true).send("PN");
+        setProperty(cPropertyOccupancy).setRetained(true).send("ON");
       } else {
         Homie.getLogger() << cIndent
                           << F("✖ Occupanncy Detected: OFF ")
