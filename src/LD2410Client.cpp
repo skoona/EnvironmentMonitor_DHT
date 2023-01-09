@@ -21,14 +21,14 @@ LD2410Client::LD2410Client(const char *id, const char *name, const char *nType, 
  */
 bool LD2410Client::handleInput(const HomieRange &range, const String &property, const String &value)
 {
-    Homie.getLogger() << "nodeInputHandler()  " << property << ": " << value << endl;
+    Homie.getLogger() << "LD2410 InputHandler()  " << property << ": " << value << endl;
 
     if (property.equalsIgnoreCase(cPropertyCommand))
     {
       String _value = value;
       String _response;
 
-      serializeJson(jsonCommandProcessor( _value ), _response);
+      serializeJson(commandProcessor( _value ), _response);
       Homie.getLogger() << cIndent
                         << F("✖Command Response: ") << value << "\n"
                         << _response
@@ -62,21 +62,21 @@ void LD2410Client::setup() {
 
   if (radar.begin(Serial2)) {
     Homie.getLogger() << cCaption << " Initialized..." << endl;
-    delay(500);
-    if(_engineering_mode) {
-      radar.requestStartEngineeringMode();
-    }
   } else {
     Homie.getLogger() << cCaption << " was not connected" << endl;
   }
-
-  _motion = (digitalRead(_ioPin) ? true : false);
 
   advertise(cPropertyMotion)
       .setName(cPropertyMotionName)
       .setDatatype(cPropertyMotionDataType)
       .setFormat(cPropertyMotionFormat)
       .setUnit(cPropertyMotionUnit);
+
+  advertise(cPropertyOccupancy)
+      .setName(cPropertyOccupancyName)
+      .setDatatype(cPropertyMotionDataType)
+      .setFormat(cPropertyOccupancyDataType)
+      .setUnit(cPropertyOccupancyFormat);
 
   advertise(cPropertyStatus)
       .setName(cPropertyStatusName)
@@ -98,32 +98,52 @@ void LD2410Client::loop() {
   uint32_t timer = millis();
   radar.ld2410_loop();
   
-  // process reporting data
-  if (radar.isConnected() && (timer - _lastReport) > _targetReportingInterval) // Report every 1000ms
-  {
-    _lastReport = timer;
-    if (_reporting_enabled) {
-      String pData = processTargetData();
-      Homie.getLogger() << processTargetData() << endl;      
-      setProperty(cPropertyStatus).setRetained(false).send(pData.c_str());
-    }
-  }
-  
   // Module controls hold time, so all we need is to read the io pin
   if ((_motion != digitalRead(_ioPin)) || ((timer - _lastBroadcast) > _broadcastInterval)) {
         
     _lastBroadcast = timer;
     _motion = digitalRead(_ioPin);
-    if (_motion) {
-      Homie.getLogger() << cIndent
-                        << F("✖ Motion Detected: ON ")
-                        << endl;
+
+    // process target reporting data
+    if (_reporting_enabled) {
+      String pData = processTargetData();
+      Homie.getLogger() << processTargetData() << endl;      
+      setProperty(cPropertyStatus).setRetained(false).send(pData.c_str());
+    }
+
+    if (radar.isMoving() && radar.isStationary()) {
+        Homie.getLogger() << cIndent
+                          << F("✖ Motion Detected: ON ")
+                          << endl;
+        Homie.getLogger() << cIndent
+                          << F("✖ Occupanncy Detected: ON ")
+                          << endl;
       setProperty(cPropertyMotion).setRetained(true).send("ON");
-    } else {
-      Homie.getLogger() << cIndent
-                        << F("✖ Motion Detected: OFF ")
-                        << endl;
-      setProperty(cPropertyMotion).setRetained(true).send("OFF");
+      setProperty(cPropertyOccupancy).setRetained(true).send("PN");
+
+    } else {    
+      if (radar.isMoving()) {
+        Homie.getLogger() << cIndent
+                          << F("✖ Motion Detected: ON ")
+                          << endl;
+        setProperty(cPropertyMotion).setRetained(true).send("ON");
+      } else {
+        Homie.getLogger() << cIndent
+                          << F("✖ Motion Detected: OFF")
+                          << endl;
+        setProperty(cPropertyMotion).setRetained(true).send("OFF");
+      }
+      if (radar.isStationary()) {
+        Homie.getLogger() << cIndent
+                          << F("✖ Occupanncy Detected: ON ")
+                          << endl;
+        setProperty(cPropertyOccupancy).setRetained(true).send("PN");
+      } else {
+        Homie.getLogger() << cIndent
+                          << F("✖ Occupanncy Detected: OFF ")
+                          << endl;
+        setProperty(cPropertyOccupancy).setRetained(true).send("OFF");
+      }
     }
   }
 
@@ -142,7 +162,7 @@ void LD2410Client::loop() {
  *   },...
  * ]
  */
-DynamicJsonDocument LD2410Client::jsonAvailableCommands() {
+DynamicJsonDocument LD2410Client::availableCommands() {
   DynamicJsonDocument doc(1024);
   JsonArray jCmd = doc.createNestedArray("Commands");
 
@@ -226,7 +246,7 @@ DynamicJsonDocument LD2410Client::jsonAvailableCommands() {
  * - requestConfigurationModeEnd()
  * Otherwise all commands are available as options
  */
-DynamicJsonDocument LD2410Client::jsonCommandProcessor(String &cmdStr) {
+DynamicJsonDocument LD2410Client::commandProcessor(String &cmdStr) {
   DynamicJsonDocument jCMD(1024);
   int iCmd = cmdStr.toInt();
   cmdStr.trim();
@@ -235,7 +255,7 @@ DynamicJsonDocument LD2410Client::jsonCommandProcessor(String &cmdStr) {
     JsonObject response = jCMD.createNestedObject("HelpResponse");
     response["success"] = true; 
     response["message"] = "Device online";
-    response["data"] = jsonAvailableCommands();
+    response["data"] = availableCommands();
 
   } else if (cmdStr.equals("streamstart") || iCmd == 2) {
     _reporting_enabled = true;
@@ -464,7 +484,7 @@ void LD2410Client::commandHandler() {
   if (Serial.available()) {
     char typedCharacter = Serial.read();
     if (typedCharacter == '\n') {
-      serializeJsonPretty(jsonCommandProcessor( command ), Serial);
+      serializeJsonPretty(commandProcessor( command ), Serial);
     } else {
       Serial.print(typedCharacter);
       if (typedCharacter != '\r') { // effectively ignore CRs

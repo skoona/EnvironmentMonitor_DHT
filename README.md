@@ -38,7 +38,6 @@ Pin Out for ESP32
   },
   "settings": {
       "sensorInterval": 900,
-      "targetReportingInterval": 60000,
       "broadcastInterval": 30000,
       "engineeringMode": true,
 		  "dhtType": 1 

@@ -12,21 +12,15 @@
 #include <ld2410.h>
 #include <ArduinoJson.h>
 
-#define LD_CMD_OK "0"
-#define LD_CMD_OKNL "0\n"
-#define LD_CMD_FAIL "1"
-#define LD_CMD_FAILNL "1\n"
 #define CM_TO_FEET_FACTOR  0.0328084
-#define LD_OCCUPANCY_TARGET_JSON "OccupancyTarget"
-#define LD_OCCUPANCY_ENGINEERING_JSON "OccupancyEngineering"
+#define LD_OCCUPANCY_TARGET_JSON "TargetReport"
+#define LD_OCCUPANCY_ENGINEERING_JSON "EngineeringTargetReport"
 
 class LD2410Client : public HomieNode {
 
 public:
   LD2410Client(const char *id, const char *name, const char *nType, const uint8_t rxPin, const uint8_t txPin, const uint8_t ioPin, const bool enableReporting = false);
 
-  void setTargetReportingInterval(unsigned long interval) { _targetReportingInterval = interval; }
-  unsigned long getTargetReportingInterval() const { return _targetReportingInterval; }
   void setBroadcastInterval(unsigned long interval) { _broadcastInterval = interval; }
   unsigned long getBroadcastInterval() const { return _broadcastInterval; }
   void setTargetReporting(bool enabled) { _reporting_enabled = enabled; }
@@ -42,9 +36,9 @@ protected:
   virtual bool handleInput(const HomieRange &range, const String &property, const String &value);
 
   void   commandHandler();
+  DynamicJsonDocument commandProcessor(String &cmdStr);
+  DynamicJsonDocument availableCommands();
   String processTargetData();
-  DynamicJsonDocument jsonAvailableCommands();
-  DynamicJsonDocument jsonCommandProcessor(String &cmdStr);
   DynamicJsonDocument processTargetReportingData();
   DynamicJsonDocument processEngineeringReportData();
   const char * triggeredby();
@@ -66,20 +60,23 @@ private:
   const char *cPropertyMotionFormat = "ON,OFF";
   const char *cPropertyMotionUnit = "";
 
+  const char *cPropertyOccupancy = "occupancy";
+  const char *cPropertyOccupancyName = "Occupancy";
+  const char *cPropertyOccupancyDataType = "enum";
+  const char *cPropertyOccupancyFormat = "ON,OFF";
+
   const char *cPropertyCommand = "system";
   const char *cPropertyCommandName = "Command Handler";
   const char *cPropertyCommandDataType = "string";
   const char *cPropertyCommandFormat = "";
 
-  const char *cPropertyStatus = "occupancy";
-  const char *cPropertyStatusName = "Occupancy";
+  const char *cPropertyStatus = "deviceStatus";
+  const char *cPropertyStatusName = "Device Status";
   const char *cPropertyStatusDataType = "json";
   const char *cPropertyStatusFormat = "";
 
   // Loop Interval Parms
-  uint32_t _targetReportingInterval = 15000;
   uint32_t _broadcastInterval = 15000;
-  uint32_t _lastReport = 0;
   uint32_t _lastBroadcast = 0;
 
   // LD2410 Interface
