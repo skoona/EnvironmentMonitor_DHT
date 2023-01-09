@@ -43,7 +43,7 @@ extern "C"
 #define LD_IO   18         // D18        
 #define LD_RX   16         // D6
 #define LD_TX   17         // D7
-#define DHT_TYPE DHTesp::DHT_MODEL_t::DHT11 // DHTesp::DHT22
+#define DHT_TYPE DHTesp::DHT_MODEL_t::DHT22 // DHTesp::DHT22
 
 #define SENSOR_READ_INTERVAL 300
 #define LD2410_TARGET_REPORTING true   // enables status property
